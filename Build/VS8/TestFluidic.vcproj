@@ -96,7 +96,7 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="TestFluidic/$(ConfigurationName)"
+			OutputDirectory="../../Bin"
 			IntermediateDirectory="TestFluidic/$(ConfigurationName)"
 			ConfigurationType="1"
 			CharacterSet="2"

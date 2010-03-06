@@ -37,7 +37,7 @@ namespace TestFluidic
 #define CG_PROGRAM_DIR "../../../../Resources/"
 #else
 // FIXME: Either parametize this, or set up a deployment area so the dir structure isn't crazy
-#define CG_PROGRAM_DIR "../../../../Resources/"
+#define CG_PROGRAM_DIR "../Resources/"
 #endif
 
 		//Mouse Button state
