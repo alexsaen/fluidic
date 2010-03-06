@@ -1,0 +1,359 @@
+/**
+ * \brief Converts 3d texture coordinates to 2d
+ *
+ * Essentially, return.x = input.x + input.z % slabs.x
+ * and return.y = input.y + input.z / slabs.x.
+ *
+ * Heavily optimised.
+ *
+ * @param texcoord 3d texture coordinate
+ * @param res the resolution of the volume
+ * @param slabs number of x, y slabs
+ */
+float2 Tex3D2D(float3 texcoord, float3 res, int2 slabs)
+{	
+/* 
+    //REFERENCE IMPLEMENTATION
+	float3 coord = clamp(texcoord, float3(0,0,0), res-float3(1,1,1));
+	int coordi = floor(coord.z); //rounded
+	float2 offset = float2(coordi % slabs.x, coordi/slabs.x)*res.xy;
+	float2 result = coord.xy + offset;
+
+	return result;
+/**/
+//*
+	// Fast implementation
+	float3 coord = 
+	//	clamp(texcoord, float3(0,0,0), res-float3(1,1,1)); //slower, good boundaries
+		texcoord; // about 3% solve time faster, possible boundary problems
+
+	float yOffset = coord.z / slabs.x;
+	float xOffset = frac(yOffset) * slabs.x;
+	float2 offset = floor(float2(xOffset, yOffset)) * res.xy;
+	float2 result = coord.xy + offset;
+	return result;
+/**/
+	
+}
+
+/**
+ * \brief Converts 2d texture coordinates to 3d
+ *
+ * @param texcoord 2d texture coordinate
+ * @param res the resolution of the volume
+ * @param slabs number of x, y slabs
+ */
+float3 Tex2D3D(float2 texcoord, float3 res, int2 slabs)
+{
+//*
+	//REFERENCE IMPLEMENTATION
+	int2 coordi = texcoord;
+	int3 resi = (int3) res;
+	
+	float zpos = dot((coordi.xy / resi.xy), float2(1, slabs.x));
+	//float zpos = (coordi.x / resi.x) + slabs.x*(coordi.y / resi.y);
+	
+	float3 result = float3(fmod(texcoord,floor(res.xy)),zpos+0.5);
+	
+	//result.z = clamp(result.z, 0, res.z-1);
+	return result;
+/**/
+/*
+	// Fast implementation
+	// Dot product is really tex.x/res.x, tex.y/res.y * slabs.x
+	float zpos = 0.5 + dot(floor(texcoord.xy / res.xy), float2(1, slabs.x));
+	return float3(fmod(texcoord, res.xy), zpos+0.5);
+/**/
+}
+
+
+/**
+ * Bilinear interpolation (half floats 16bit)
+ *
+ * @param tex the texture to interpolate
+ * @param s the position
+ * @return the components interpolated at the given position
+ */
+half4 H4Bilerp(samplerRECT tex, half2 s)
+{
+  half4 st;
+  st.xy = floor(s - 0.5) + 0.5;
+  st.zw = st.xy + 1;
+  
+  half2 t = s - st.xy;
+    
+  half4 tex11 = texRECT(tex, st.xy);
+  half4 tex21 = texRECT(tex, st.zy);
+  half4 tex12 = texRECT(tex, st.xw);
+  half4 tex22 = texRECT(tex, st.zw);
+
+  // bilinear interpolation
+  return lerp(lerp(tex11, tex21, t.x), lerp(tex12, tex22, t.x), t.y);
+}
+
+/**
+ * Bilinear interpolation (floats 32bit)
+ *
+ * @param tex the texture to interpolate
+ * @param s the position
+ * @return the components interpolated at the given position
+ */
+float4 F4Bilerp(samplerRECT tex, float2 s)
+{
+  float4 st;
+  st.xy = floor(s - 0.5) + 0.5;
+  st.zw = st.xy + 1;
+  
+  float2 t = s - st.xy;
+    
+  float4 tex11 = texRECT(tex, st.xy);
+  float4 tex21 = texRECT(tex, st.zy);
+  float4 tex12 = texRECT(tex, st.xw);
+  float4 tex22 = texRECT(tex, st.zw);
+
+  return lerp(lerp(tex11, tex21, t.x), lerp(tex12, tex22, t.x), t.y);
+}
+
+/**
+ * \brief Trilinear interpolation (float4)
+ *
+ * @param tex The flat 3d texture
+ * @param s the point to interpolate at
+ * @param res the resolution of the volume
+ * @param slabs number of x, y slabs
+ */
+float4 F4Trilerp(samplerRECT tex, float3 s, float3 res, int2 slabs)
+{
+	float3 sd = floor(s-0.5) + 0.5;
+	float3 su = sd + 1;
+	
+	float3 t = s - sd;
+	
+	float2 p111 = Tex3D2D(sd.xyz + float3(0,0,0), res, slabs);
+	float2 p112 = Tex3D2D(sd.xyz + float3(0,0,1), res, slabs);
+	float2 p121 = Tex3D2D(sd.xyz + float3(0,1,0), res, slabs);
+	float2 p122 = Tex3D2D(sd.xyz + float3(0,1,1), res, slabs);
+										
+	float2 p211 = Tex3D2D(sd.xyz + float3(1,0,0), res, slabs);
+	float2 p212 = Tex3D2D(sd.xyz + float3(1,0,1), res, slabs);
+	float2 p221 = Tex3D2D(sd.xyz + float3(1,1,0), res, slabs);
+	float2 p222 = Tex3D2D(sd.xyz + float3(1,1,1), res, slabs);
+	
+	float4 tex111 = texRECT(tex, p111);
+	float4 tex112 = texRECT(tex, p112);
+	float4 tex121 = texRECT(tex, p121);
+	float4 tex122 = texRECT(tex, p122);
+								  
+	float4 tex211 = texRECT(tex, p211);
+	float4 tex212 = texRECT(tex, p212);
+	float4 tex221 = texRECT(tex, p221);
+	float4 tex222 = texRECT(tex, p222);
+	
+	float4 tex11 = lerp(tex111, tex112, t.z);
+	float4 tex12 = lerp(tex121, tex122, t.z);
+	float4 tex21 = lerp(tex211, tex212, t.z);
+	float4 tex22 = lerp(tex221, tex222, t.z);
+	
+	// bilinear interpolation
+	return lerp(lerp(tex11, tex21, t.x), lerp(tex12, tex22, t.x), t.y);
+}
+
+/**
+ * 2D 4-component neighbour lookup
+ *
+ * @param tex the texture to interpolate
+ * @param s the position
+ * @param left out the value 1 pixel up from the given position
+ * @param right out the value 1 pixel up from the given position
+ * @param up out the value 1 pixel up from the given position
+ * @param down out the value 1 pixel up from the given position
+ */
+void F4Neighbours2D(samplerRECT tex,
+						 float2 s,
+						 out float4 left,
+						 out float4 right,
+						 out float4 up,
+						 out float4 down)
+{
+	float3 p  = float3(-1, 0, 1);
+	
+	down = texRECT(tex, s + p.yx);
+	up = texRECT(tex, s + p.yz);
+	left = texRECT(tex, s + p.xy);
+	right = texRECT(tex, s + p.zy);
+}
+
+/**
+ * 2D 1-component neighbour lookup
+ *
+ * @param tex the texture to interpolate
+ * @param s the position
+ * @param left out the value 1 pixel up from the given position
+ * @param right out the value 1 pixel up from the given position
+ * @param up out the value 1 pixel up from the given position
+ * @param down out the value 1 pixel up from the given position
+ */
+void F1Neighbours2D(samplerRECT tex,
+						 float2 s,
+						 out float left,
+						 out float right,
+						 out float up,
+						 out float down)
+{
+	float3 p  = float3(-1, 0, 1);
+	
+	down = texRECT(tex, s + p.yx).x;
+	up = texRECT(tex, s + p.yz).x;
+	left = texRECT(tex, s + p.xy).x;
+	right = texRECT(tex, s + p.zy).x;
+}
+	
+	
+/**
+ * \brief 3D neighbour Lookup (float4)
+ *
+ * @param tex The flat 3d texture
+ * @param s the point to find neighbours for
+ * @param res the resolution
+ * @param slabs The number of slabs in each dimension
+ * @param left The value at the left point of this one
+ * @param right The value at the right point of this one
+ * @param up The value at the up point of this one
+ * @param down The value at the down point of this one
+ * @param close The value at the close point of this one
+ * @param far The value at the far point of this one
+ */
+void F4Neighbours3D(samplerRECT tex,
+						 float3 s,
+						 float3 res, 
+						 int2 slabs,
+						 out float4 left,
+						 out float4 right,
+						 out float4 up,
+						 out float4 down,
+						 out float4 close,
+						 out float4 far)
+{
+	float3 p  = float3(-1, 0, 1);
+	
+	left = texRECT(tex, Tex3D2D(s + p.xyy, res, slabs));
+	right = texRECT(tex, Tex3D2D(s + p.zyy, res, slabs));
+	up = texRECT(tex, Tex3D2D(s + p.yzy, res, slabs));
+	down = texRECT(tex, Tex3D2D(s + p.yxy, res, slabs));
+	close = texRECT(tex, Tex3D2D(s + p.yyz, res, slabs));
+	far = texRECT(tex, Tex3D2D(s + p.yyx, res, slabs));
+}
+
+/**
+ * \brief Neighbour Lookup (float1)
+ *
+ * @param tex The 2d texture
+ * @param s the point to find neighbours for
+ * @param left The value at the left point of this one
+ * @param right The value at the right point of this one
+ * @param up The value at the up point of this one
+ * @param down The value at the down point of this one
+ */
+void F1Neighbours3D(samplerRECT tex,
+						 float2 s,
+						 out float left,
+						 out float right,
+						 out float up,
+						 out float down)
+{
+	float3 p  = float3(-1, 0, 1);
+	
+	down = texRECT(tex, s + p.yx).x;
+	up = texRECT(tex, s + p.yz).x;
+	left = texRECT(tex, s + p.xy).x;
+	right = texRECT(tex, s + p.zy).x;
+}
+
+/**
+ * \brief 3D neighbour Lookup (float1)
+ *
+ * @param tex The flat 3d texture
+ * @param s the point to find neighbours for
+ * @param res the resolution
+ * @param slabs The number of slabs in each dimension
+ * @param left The value at the left point of this one
+ * @param right The value at the right point of this one
+ * @param up The value at the up point of this one
+ * @param down The value at the down point of this one
+ * @param close The value at the close point of this one
+ * @param far The value at the far point of this one
+ */
+void F1Neighbours3D(samplerRECT tex,
+						 float3 s, 
+						 float3 res, 
+						 int2 slabs,
+						 out float left,
+						 out float right,
+						 out float up,
+						 out float down,
+						 out float close,
+						 out float far)
+{
+	float3 p  = float3(-1, 0, 1);
+	
+	down = texRECT(tex, Tex3D2D(s + p.yxy, res, slabs)).x;
+	up = texRECT(tex, Tex3D2D(s + p.yzy, res, slabs)).x;
+	left = texRECT(tex, Tex3D2D(s + p.xyy, res, slabs)).x;
+	right = texRECT(tex, Tex3D2D(s + p.zyy, res, slabs)).x;
+	close = texRECT(tex, Tex3D2D(s + p.yyz, res, slabs)).x;
+	far = texRECT(tex, Tex3D2D(s + p.yyx, res, slabs)).x;
+}
+
+/**
+ * \brief 3D neighbour Lookup (half1)
+ *
+ * @param tex The flat 3d texture
+ * @param s the point to find neighbours for
+ * @param res the resolution
+ * @param slabs The number of slabs in each dimension
+ * @param left The value at the left point of this one
+ * @param right The value at the right point of this one
+ * @param up The value at the up point of this one
+ * @param down The value at the down point of this one
+ * @param close The value at the close point of this one
+ * @param far The value at the far point of this one
+ */
+void h1texRECTneighbours(samplerRECT tex,
+						 float3 s, 
+						 float3 res, 
+						 int2 slabs,
+						 out half left,
+						 out half right,
+						 out half up,
+						 out half down,
+						 out half close,
+						 out half far)
+{
+	float3 p  = float3(-1, 0, 1);
+	
+	down = texRECT(tex, Tex3D2D(s + p.yxy, res, slabs)).x;
+	up = texRECT(tex, Tex3D2D(s + p.yzy, res, slabs)).x;
+	left = texRECT(tex, Tex3D2D(s + p.xyy, res, slabs)).x;
+	right = texRECT(tex, Tex3D2D(s + p.zyy, res, slabs)).x;
+	close = texRECT(tex, Tex3D2D(s + p.yyz, res, slabs)).x;
+	far = texRECT(tex, Tex3D2D(s + p.yyx, res, slabs)).x;
+}
+
+
+/**
+ * Pseudo random texture
+ * Generates a pseudo-random number from the given input.
+ * Essentially, generates a static white noise texture.
+ *
+ * @param coords the coordinates for input
+ * @return a pseudo random float
+ */
+float randTex(int2 coords)
+{	
+	int rnd = (coords.x * 2309 + coords.y+0.5);
+
+	rnd = (rnd * 15731 + 789221) * rnd + 36256589;
+	float ret = (sin((float)rnd)+1.01)/2;
+
+	return ret;
+}

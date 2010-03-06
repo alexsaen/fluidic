@@ -1,0 +1,221 @@
+#include "Utils.cg"
+
+
+/**
+ * Complex advection
+ * Advects the 'data' texture by the velocity given over the timestep given.
+ * This is a higher accuracy version, which uses the average of this and the previous
+ * velocity to advect.
+ * WARNING: Not working satisfactorily (todo)
+ *
+ * @param coords coordinates of the current pixel
+ * @param data the data texture - will be advected
+ * @param velocity the velocity texture - will be the direction of advection
+ * @param boundary texture containing the fluid boundaries (currently ignored)
+ * @param d (dx, dy, 0, dt)
+ * @return the new data for this coordiate
+ */
+float4 Advect2D (
+			float2 coords : TEXCOORD0,
+			uniform samplerRECT data,
+			uniform samplerRECT velocity,
+			uniform samplerRECT boundary, 
+			uniform float4 d) : COLOR
+{
+	float4 returnData, currData, stepBackData, stepForwardData;
+	float2 currVel;
+	float2 stepBackCoords, stepForwardCoords;
+	float2 stepBackVel, stepForwardVel;
+	float2 avgVel;
+
+	float2 alpha = d.w/float2(d.x, d.y);
+	
+	//do a texture lookup to get the current velocity/data
+	currVel = (texRECT(velocity, coords)).xy;
+	currData = (texRECT(data, coords));
+
+	//step back a timestep to get the previous velocity (phi n-1)
+	stepBackCoords = coords - alpha * currVel;
+	stepBackVel = texRECT(velocity, stepBackCoords).xy;
+	stepBackData = (texRECT(data, stepBackCoords));
+	
+	
+/*
+	//return stepBackData;
+	stepBackData = F4Bilerp(data, stepBackCoords);
+	stepForwardCoords = stepBackCoords + alpha * stepBackVel;
+	stepForwardVel = texRECT(velocity, stepForwardCoords).xy;
+	//stepForwardData = (texRECT(data, stepForwardCoords));
+	stepForwardData = F4Bilerp(data, stepForwardCoords);
+
+	returnData = stepForwardData - 0.5*(currData - stepBackData);
+	return returnData;
+*/
+	
+	// average the previous velocity with this one for a closer estimate
+	// for the advection velocity.
+	avgVel = (currVel + stepBackVel)/2;
+
+	//step back again, using the new and improved velocity
+	stepBackCoords = coords - alpha * avgVel;
+
+/*
+	// a hack I put in for some reason I can't remember. Something to do with 
+	if (currData.xy != currVel) {	    
+		returnData = (1 - d.w*0.01*0) * f4texRECTbilerp(data, stepBackCoords);
+	} else {
+		returnData = F4Bilerp(data, stepBackCoords);
+	}
+*/
+	//interpolate the step back position and return
+	returnData = F4Bilerp(data, stepBackCoords);
+	return returnData;
+}
+
+/**
+ * Simple advection
+ * Advects the 'data' texture by the velocity given over the timestep given.
+ * WARNING: Not working satisfactorily
+ *
+ * @param coords coordinates of the current pixel
+ * @param data the data texture - will be advected
+ * @param velocity the velocity texture - will be the direction of advection
+ * @param boundary texture containing the fluid boundaries
+ * @param scale the scale between the velocity resolution and the data resolution
+ * @param d (dx, dy, 0, dt)
+ * @return the new data for this coordiate
+ */
+half4 SimpleAdvect2D (
+			float2 coords : TEXCOORD0,
+			uniform samplerRECT data,
+			uniform samplerRECT velocity,
+			uniform samplerRECT boundary,
+			uniform float2 scale,
+			uniform float4 d) : COLOR
+{
+	half4 returnVal;
+	half2 currVel;
+	half2 stepBackCoords;
+	half2 alpha = d.w/d.xy;
+	
+	//do a texture lookup to get the velocity
+	currVel = (texRECT(velocity, coords*scale)).xy;
+	
+	//step back a timestep to get the previous velocity
+	stepBackCoords = coords*scale - alpha * currVel;
+
+	//if it's a boundary, return base value
+	float bnd = texRECT(boundary, stepBackCoords);
+	
+	if (bnd > 0) {
+		returnVal = texRECT(data, coords);
+	} else {
+		//interpolate the step back position and return
+		returnVal = F4Bilerp(data, stepBackCoords/scale);
+	}
+	//returnVal = texRECT(data, stepBackCoords);
+	return returnVal;
+}
+
+/**
+ * \brief Advects data by velocity (more accurate, unstable version)
+ * 
+ * Advection is the component of navier-stokes equations that
+ * transports the field along the vector-field direction.
+ *
+ * Advection looks at the velocity speed at each voxel, and 
+ * performs a backwards time step to find out which position
+ * will be here in the next time step. It then uses interpolation
+ * to update the value at the current time step. 
+ *
+ * @param coords The texture coordinates
+ * @param data The data to advect
+ * @param velocity The velocity field to advect by
+ * @param d dx, dy, dz and dt - spatial and time differences
+ * @param res the resolution
+ * @param slabs The number of slabs in each dimension
+ */
+float4 Advect3D (
+			float2 coords : TEXCOORD0,
+			uniform samplerRECT data,
+			uniform samplerRECT velocity,
+			uniform float4 d,
+			uniform float3 res,
+			uniform int2 slabs) : COLOR
+{
+	float4 returnVal;
+	float2 currVel;
+	float2 stepBackCoords;
+	float2 stepBackVel;
+	float2 avgVel;
+
+	float2 alpha = d.w/float2(d.x, d.y);
+
+	//do a texture lookup to get the velocity
+	currVel = (texRECT(velocity, coords)).xy;
+
+	//step back a timestep to get the previous velocity
+	stepBackCoords = coords - alpha * currVel;
+	stepBackVel = texRECT(velocity, stepBackCoords).xy;
+
+	//average the previous velocity with this one for a closer estimate
+	//on the advection amount.
+	avgVel = (currVel + stepBackVel)/2;
+
+	//step back again, using the new and improved velocity
+	stepBackCoords = coords - alpha * avgVel;
+
+	//interpolate the step back position and return
+	returnVal = f4texRECTbilerp(data, stepBackCoords);
+	return returnVal;
+}
+
+/**
+ * \brief Advects data by velocity (simple version)
+ * 
+ * Advection is the component of navier-stokes equations that
+ * transports the field along the vector-field direction.
+ *
+ * Advection looks at the velocity speed at each voxel, and 
+ * performs a backwards time step to find out which position
+ * will be here in the next time step. It then uses interpolation
+ * to update the value at the current time step. 
+ *
+ * @param coords The texture coordinates
+ * @param data The data to advect
+ * @param velocity The velocity field to advect by
+ * @param d dx, dy, dz and dt - spatial and time differences
+ * @param res the resolution
+ * @param slabs The number of slabs in each dimension
+ */
+float4 SimpleAdvect3D (
+			float2 coords : TEXCOORD0,
+			uniform samplerRECT data,
+			uniform samplerRECT velocity,
+			uniform samplerRECT boundary,
+			uniform float4 d,
+			uniform float3 res,
+			uniform int2 slabs) : COLOR
+{
+	float4 returnVal;
+	float3 currVel;
+	float3 coords3d;
+	float3 stepBackCoords3d;
+	float2 stepBackCoords2d;
+	float3 alpha = d.w/float3(d.x, d.y, d.z);
+
+	//do a texture lookup to get the velocity
+	currVel = (texRECT(velocity, coords)).xyz;
+
+	coords3d = Tex2D3D(coords, res, slabs);
+	
+	//step back a timestep to get the previous velocity
+	stepBackCoords3d = coords3d - alpha * currVel;
+
+	//if it's a boundary, return base value
+	stepBackCoords3d = clamp(stepBackCoords3d, float3(0.5,0.5,0.5), res-float3(0.5,0.5,0.5));
+
+	returnVal = F4Trilerp(data, stepBackCoords3d, res, slabs);
+
+	return returnVal;
+}

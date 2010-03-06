@@ -1,0 +1,54 @@
+/**
+ * Sets up depth buffer for z-culling optimisation
+ * 
+ * Culling sets the depth buffer to a value proportional to the length
+ * of the vector in the velocity fragment at the time. Essentially,
+ * a low depth value returned here will mean less jacobi iterations are
+ * performed on it, because it changes the z value each iteration
+ */
+half ZCull(uniform samplerRECT velocity,
+		   uniform samplerRECT data,
+		   uniform samplerRECT boundaries,
+		   float2 coords : TEXCOORD0) : DEPTH
+{
+	float4 v = texRECT(velocity, coords);
+	float4 d = texRECT(data, coords);
+	float4 b = texRECT(boundaries, coords);
+	
+	//cut out fragments we don't want to process	
+	if (b.x == 1) return 0; // TODO: I've seen this line cause instability when adding boundaries to moving fluid
+
+	float len = min(length(v.xy),1);
+	return (len*0.7) + 0.3;
+}
+
+/**
+ * \brief Sets the depth buffer based on the velocity at the current point
+ * 
+ * This will set the z-buffer to the range [0.2 1.0], depending on the current
+ * velocity
+ *
+ * @param velocity The velocity field
+ * @param data The Data in the field
+ * @param boundaries The boundary data
+ * @param coords The texture coordinates
+ */
+ /* REMOVED - SAME FN SHOULD WORK
+half ZCull3D(uniform samplerRECT velocity,
+		   uniform samplerRECT data,
+		   uniform samplerRECT boundaries,
+		   float2 coords : TEXCOORD0) : DEPTH
+{
+
+	float4 v = texRECT(velocity, coords);
+	float4 d = texRECT(data, coords);
+	float4 b = texRECT(boundaries, coords);
+	
+	//cut out fragments we don't want to process	
+	bool processFragment = true;
+	if (b.x == 1) processFragment = false;
+	
+	float len = min(length(v),1);
+	return processFragment * ((len*0.8) + 0.2);
+}
+*/

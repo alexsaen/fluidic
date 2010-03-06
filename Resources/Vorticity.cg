@@ -1,0 +1,73 @@
+#include "Utils.cg"
+
+/**
+ * Vorticity Confinement
+ * Applies some extra 'curl' to the velocity - to get that lovely wispy smokey effect.
+ *
+ * @param coords coordinates of the current pixel
+ * @param velocity the velocity texture
+ * @param d (dx, dy, 0, dt)
+ * @return the new velocity for this coordinate
+ */
+float4 Vorticity2D (
+			float2 coords : TEXCOORD0,
+			uniform samplerRECT velocity,
+			uniform float4 d) : COLOR
+{
+	float4 currVel;
+	float2 offset;
+	float4 close, far, left, right, up, down;
+
+	//do a texture lookup to get the velocity
+	currVel = (texRECT(velocity, coords));
+
+	F4Neighbours2D(velocity, coords, left, right, up, down);
+	
+	offset = 0.5*d.xy*d.w*float2(
+		right.x + left.x,
+		up.y + down.y
+	);
+	
+	currVel.xy += offset;
+	return currVel;
+}
+
+/**
+ * \brief Applies vorticity confinement.
+ * NOTE: Not implemented completely
+ *
+ * @param coords The texture coordinates
+ * @param velocity The velocity field
+ * @param d dx, dy, dz and dt - spatial and time differences
+ * @param res the resolution
+ * @param slabs The number of slabs in each dimension
+ */
+float4 Vorticity3D (
+			float2 coords : TEXCOORD0,
+			uniform samplerRECT velocity,
+			uniform float4 d,
+			uniform float3 res,
+			uniform int2 slabs) : COLOR
+{
+	float4 currVel;
+	float3 offset;
+	float3 coords3d;
+	float4 close, far, left, right, up, down;
+
+	//do a texture lookup to get the velocity
+	currVel = (texRECT(velocity, coords));
+
+	coords3d = Tex2D3D(coords, res, slabs);
+	F4Neighbours3D(velocity, coords3d, res, slabs, left, right, up, down, close, far);
+	
+	offset = 0.5*d.xyz*d.w*
+	float3(
+		right.x + left.x,
+		up.y + down.y,
+		close.z + far.z
+	);
+	
+	currVel.xyz += offset;
+	//currVel.w = 1;
+	return currVel;
+}

@@ -1,0 +1,163 @@
+#include "Utils.cg"
+	
+/**
+ * Renders the fluid. By default, only data is used. This method can be changed
+ * internally to show LIC and nullclines, in which case velocity is used too.
+ * The others left for convenience
+ * 
+ * @param velocity
+ * @param data
+ * @param pressure
+ * @param boundaries
+ * @param scale ratio of velocity to data coords
+ * @param coords
+ */
+float4 Render2D(uniform samplerRECT velocity,
+				   uniform samplerRECT data,
+				   uniform samplerRECT pressure,
+				   uniform samplerRECT boundaries,
+				   uniform float2 scale,
+				   float2 coords : TEXCOORD0) : COLOR
+{
+	float4 vel;
+	float2 velPos = coords*scale;
+	float4 result = texRECT(velocity, velPos);
+	float4 v = texRECT(velocity, velPos);
+	float4 d = texRECT(data, coords);
+	float4 p = texRECT(pressure, velPos);
+	float4 b = texRECT(boundaries, velPos);
+
+	bool renderFluid = true;
+	bool renderLIC = false;
+	bool renderNullclines = false;
+
+	if (renderFluid) {
+		result =  b+d;
+		// result.a = max(max(result.r, result.g), result.b); // alpha = max of data
+		result.a = clamp((result.r + result.g + result.b)/3, 0, 1); // alpha = average of data
+	}
+
+	if (renderLIC) {
+	    // LIC - line inverse convolusion. Very good for seeing the flow of the fluid
+		float curr = randTex(coords);
+		int numSteps = 50;
+	
+		for (int i=0; i<numSteps; i++) {
+			 vel = texRECT(velocity, velPos);
+			 velPos = velPos - vel.xy;
+			 curr = curr + randTex(velPos);
+		}
+		curr = curr/(numSteps+1);
+	
+		if (b.x == 1) curr = 1;
+		result *= 0.5;
+		result += curr*0.5;
+		result.a = 1;
+	}
+	
+	if (renderNullclines) {
+		// Displays y-nullclines in red, x-nullclines in blue. Uses a fairly naive algorithm, so kinda sucks.
+		float  leftX = (texRECT(velocity, coords*scale-float2(1,0)).x);
+		float rightX = (texRECT(velocity, coords*scale+float2(1,0)).x);
+		if (abs(leftX) > abs(v.x)
+		 && abs(rightX) > abs(v.x)) {
+			result.r = 1;
+		}
+		
+		float    topY = (texRECT(velocity, coords*scale-float2(0,1)).y);
+		float bottomY = (texRECT(velocity, coords*scale+float2(0,1)).y);
+		if (abs(topY) > abs(v.y) && abs(bottomY) > abs(v.y)) {
+			result.g = 1;
+		}
+	}
+	
+	return result;
+}
+
+
+struct VertexFragment3D
+{
+	float4 position : POSITION; //required for opengl rasteriser
+	float4 texcoord : TEXCOORD0;
+	float4 color : TEXCOORD1;
+	float4 pos : TEXCOORD2;
+};
+
+/**
+ * \brief Prepares the colours for use by raycastFProgram
+ *
+ * @param position the position of the vertex
+ * @param position the texture-coord of the vertex
+ * @param position the color of the vertex
+ */
+VertexFragment3D RaycastVProgram3D(float4 position : POSITION,
+								float4 texcoord : TEXCOORD0,
+								float4 color : COLOR0)
+{
+	VertexFragment3D OUT;
+	
+	//OpenGL state matrices
+	float4x4 ModelView = glstate.matrix.modelview[0];
+	float4x4 ModelViewProj = glstate.matrix.mvp;
+	
+	//Transform vertices
+	OUT.position = mul( ModelViewProj, position); //required for opengl rasteriser
+	OUT.pos = mul(ModelViewProj, position); //texcoord, so is interpolated
+	
+	//pass-through others
+	OUT.texcoord = texcoord;
+	OUT.color = color;
+	
+	return OUT;
+}
+
+/**
+ * \brief Performs ray casting on the volume
+ *
+ * @param texcoord the texture-coord of the fragment
+ * @param col the color of the vertex
+ * @param pos the position of the current fragment
+ * @param backface_tex The back-face texture
+ * @param volume_tex The texture containing the volume data
+ * @param stepsize The stepsize to use when marching (not used)
+ * @param screenRes The current x,y viewport resolution
+ * @param res The x,y,z resolution of the volume
+ * @param slabs The number of slabs in each dimension
+ */
+float4 RaycastFProgram3D(	float4 texcoord : TEXCOORD0,
+						float4 col : TEXCOORD1,
+						float4 pos : TEXCOORD2,
+						uniform samplerRECT backface_tex,
+						uniform samplerRECT volume_tex,
+						uniform float stepsize,
+						uniform float2 screenRes,
+						uniform float3 res,
+						uniform int2 slabs) : COLOR
+{
+
+	float2 texc = ((pos.xy / pos.w) + 1) / 2; //coord in backside buffer to look
+	float4 start = texcoord; //start position of ray (stored in texcoord)
+	float4 back_position = texRECT(backface_tex, texc*screenRes);
+	float3 dir = back_position.xyz - start.xyz;
+	float len = length(dir.xyz); //length of ray, from front to back
+
+	//delta length
+	int numSteps = 0.5 * len * res.x;
+	float delta = len / (numSteps+1);
+	
+	float3 delta_dir = normalize(dir) * delta * res;
+	float delta_dir_len = length(delta_dir.xyz);
+	
+	float3 vec = start.xyz*res;
+	float4 col_acc = float4(0,0,0,0); //color accumulated
+	
+	int i=0;
+	for (i=0; i< numSteps; i++)
+	{
+		col_acc += F4Trilerp(volume_tex, vec, res, slabs);
+		vec += delta_dir;
+	}
+	col_acc.xyz = normalize(col_acc.xyz);
+	col_acc.a *= delta;
+	return col_acc;
+}

@@ -1,0 +1,115 @@
+#include "Utils.cg"
+
+/**
+ * Returns the divergence field
+ *
+ * @param velocity velocity texture
+ * @param coords coordinates
+ * @param d (dx, dy, 0, dt)
+ */
+float DivField2D(samplerRECT velocity,
+				   float2 coords : TEXCOORD0,
+				   uniform float4 d) : COLOR
+{
+	float result;
+
+	float4 left, right, up, down;
+	F4Neighbours2D(velocity, coords, left, right, up, down);
+
+	result  = ((right.x - left.x) / (2*d.x)) + ((up.y - down.y) / (2*d.y));
+
+	return result;
+}
+
+/**
+ * Subtracts the pressure gradient from the velocity
+ *
+ * @param pressure pressure texture
+ * @param velocity velocity texture
+ * @param coords coordinates
+ * @param d (dx, dy, 0, dt)
+ */
+float4 SubtractPressureGradient2D(uniform samplerRECT pressure,
+						   uniform samplerRECT velocity,
+						   float2 coords : TEXCOORD0,
+						   uniform float4 d) : COLOR
+{
+	float4 result;
+	float left, right, up, down;
+
+	F1Neighbours2D(pressure, coords, left, right, up, down);
+
+	result = texRECT(velocity, coords);
+	result.x -=  ((right - left)/(2*d.x));
+	result.y -=  ((up - down)/(2*d.y));
+	return result;
+
+}
+
+/**
+ * \brief returns the divergence at this voxel
+ *
+ * Divergence is defined as (right-left)/2dx + (up-down)/2dy + (close-far)/2dz
+ *
+ * @param coords The texture coordinates
+ * @param velocity the Velocity of the field
+ * @param d dx, dy, dz and dt - spatial and time differences
+ * @param res the resolution
+ * @param slabs The number of slabs in each dimension
+ */
+float DivField3D(float2 coords : TEXCOORD0,
+				samplerRECT velocity,
+				uniform float4 d,
+				uniform float3 res,
+				uniform int2 slabs) : COLOR
+{
+
+	float result;
+
+	float3 s = Tex2D3D(coords, res, slabs);
+	float4 left, right, up, down, close, far;
+	
+	F4Neighbours3D(velocity, s, res, slabs, left, right, up, down, close, far); //3d
+	//F4Neighbours3D(velocity, coords, res, slabs, left, right, up, down, close, far); //2d
+
+	result = 0.5 * ( right.x/d.x + up.y/d.y + close.z/d.z -
+					 left.x/d.x - down.y/d.y - far.z/d.z );
+	return result;
+}
+/**
+ * \brief Subtracts the pressure gradient from the velocity
+ *
+ * Simply finds the pressure gradient in the field, and subtracts
+ * this from the velocity
+ *
+ * @param coords The texture coordinates
+ * @param pressure the pressure of the field
+ * @param velocity the Velocity of the field
+ * @param d dx, dy, dz and dt - spatial and time differences
+ * @param res the resolution
+ * @param slabs The number of slabs in each dimension
+ */
+float4 SubtractPressureGradient3D(float2 coords : TEXCOORD0,
+								uniform samplerRECT pressure,
+								uniform samplerRECT velocity,
+								uniform float4 d,
+								uniform float3 res,
+								uniform int2 slabs) : COLOR
+{
+	float4 result;
+	float3 pressureGrad;
+	float left, right, up, down, close, far;
+
+	float3 s = Tex2D3D(coords, res, slabs);
+	F1Neighbours3D(pressure, s, res, slabs, left, right, up, down, close, far);
+
+	result = texRECT(velocity, coords);
+	pressureGrad.x = 0.5 * (right - left)/(d.x);
+	pressureGrad.y = 0.5 * (up - down)/(d.y);
+	pressureGrad.z = 0.5 * (close - far)/(d.z);
+
+	result.xyz -= pressureGrad;
+	
+	return result;
+
+}

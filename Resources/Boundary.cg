@@ -1,0 +1,235 @@
+#include "utils.cg"
+
+/**
+ * Applies the function (scale * coordinate value offset by boundary) to the data texture, based
+ * on the boundary and offset.
+ * Used to set the velocity/pressure at boundary points
+ *
+ * @param coords coordinates of the current pixel
+ * @param data texture to do boundaries for
+ * @param offset the offset texture
+ * @param boundaries the boundary texture
+ * @param scale the multiplier for the boundaries
+ * @return the new data
+ */
+float4 F4Boundary2D(float2 coords : TEXCOORD0,
+				  uniform samplerRECT data,
+				  uniform samplerRECT offset,
+				  uniform samplerRECT boundaries,
+				  uniform float scale) : COLOR
+{
+	float4 o = texRECT(offset, coords);
+	float b = texRECT(boundaries, coords);
+	
+	if (o.x == 0 && o.y == 0) {
+		scale = 1;
+	}	
+	
+	return (1-b) * scale * texRECT(data, coords+o.xy);
+}
+
+/**
+ * Applies the function (scale * coordinate value offset by boundary) to the data texture, based
+ * on the boundary and offset.
+ * Used to set the velocity/pressure at boundary points
+ *
+ * @param coords coordinates of the current pixel
+ * @param data texture to do boundaries for
+ * @param offset the offset texture
+ * @param boundaries the boundary texture
+ * @param scale the multiplier for the boundaries
+ * @return the new data
+ */
+float F1Boundary2D(float2 coords : TEXCOORD0,
+				  uniform samplerRECT data,
+				  uniform samplerRECT offset,
+				  uniform float scale) : COLOR
+{
+	float4 o = texRECT(offset, coords);
+	
+	if (o.x == 0 && o.y == 0) {
+		scale = 1;
+	}	
+	return scale * texRECT(data, coords+o.xy).x;
+}
+
+/**
+ * Calculates the offsets used by the boundaries. These are the cells that will be used
+ * to scale the boundary values by in the boundary1d and boundary4d functions.
+ *
+ * @param boundaries boundary texture
+ * @param coords coordinates
+ * @param res resolution of texture - max x/y values
+ * @return offset of this
+ */
+float4 CalculateOffsets2D(uniform samplerRECT boundaries,
+				  float2 coords : TEXCOORD0,
+				  uniform float2 res) : COLOR {
+	float4 bnd;
+	float left, right, up, down;
+	float4 offset = float4(0,0,0,0);
+
+	bnd = texRECT(boundaries, coords);
+	
+	F1Neighbours2D(boundaries, coords, left, right, up, down);
+
+	if (right - left < 0) { //arb right wall
+		offset.x = 1;
+	}
+
+	if (right - left > 0) { //arb left wall
+		offset.x = -1;
+	}
+
+	if (up - down > 0) { //arb bottom wall
+		offset.y = -1;
+	}
+
+	if (up - down < 0) { //arb top wall
+		offset.y = 1;
+	}
+	
+	if (coords.x - 1 < 0) { //left bound
+		offset.x = 1; 
+	}
+
+	if (coords.x - res.x+1 > 0) { //right bound
+		offset.x = -1; 
+	}
+
+	if (coords.y - 1 < 0) { //bottom bound
+		offset.y = 1; 
+	}
+	
+	if (coords.y - res.y+1 > 0) { //top bound
+		offset.y = -1; 
+	}
+
+	return offset;
+}
+
+/**
+ * \brief Sets the boundary velocities (4 dimensional)
+ *
+ * @param coords The texture coordinates
+ * @param data The data to advect
+ * @param offset The offset positions for the boundary
+ * @param scale the scale to multiple by at the offset
+ * @param res the resolution
+ * @param slabs The number of slabs in each dimension
+ */
+float4 F4Boundary3D(float2 coords : TEXCOORD0,
+				uniform samplerRECT data,
+				uniform samplerRECT offset,
+				uniform float scale,
+				uniform float3 res,
+				uniform int2 slabs) : COLOR
+{
+	float4 o = texRECT(offset, coords);
+
+	if (length(o) == 0) {
+		scale = 1;
+	}
+	float3 coords3d = Tex2D3D(coords, res, slabs);
+
+	return scale * texRECT(data, Tex3D2D(coords3d+o.xyz, res, slabs));
+}
+
+/**
+ * \brief Sets the boundary velocities (1 dimensional)
+ *
+ * @param coords The texture coordinates
+ * @param data The data to advect
+ * @param offset The offset positions for the boundary
+ * @param scale the scale to multiple by at the offset
+ * @param res the resolution
+ * @param slabs The number of slabs in each dimension
+ */
+float F1Boundary3D(float2 coords : TEXCOORD0,
+				uniform samplerRECT data,
+				uniform samplerRECT offset,
+				uniform float scale,
+				uniform float3 res,
+				uniform int2 slabs) : COLOR
+{
+	float4 o = texRECT(offset, coords);
+
+	if (length(o) == 0) {
+		scale = 1;
+	}
+	float3 coords3d = Tex2D3D(coords, res, slabs);
+
+	return scale * texRECT(data, Tex3D2D(coords3d+o.xyz, res, slabs));
+}
+
+/**
+ * \brief Calculates offsets at the boundaries
+ *
+ * @param coords The texture coordinates
+ * @param boundaries The boundary data
+ * @param res the resolution
+ * @param slabs The number of slabs in each dimension
+ */
+float4 CalculateOffsets3D(float2 coords : TEXCOORD0,
+				  uniform samplerRECT boundaries,
+				  uniform float3 res,
+				  uniform int2 slabs) : COLOR {
+	float4 bnd;
+	float left, right, up, down, close, far;
+	float4 offset = float4(0,0,0,0);
+
+	float3 coords3d = Tex2D3D(coords, res, slabs);
+	bnd = texRECT(boundaries, coords);
+	F1Neighbours3D(boundaries, coords3d, res, slabs, left, right, up, down, close, far);
+
+	/* //ARBITRARY BOUNDARIES NOT YET IMPLEMENTED
+	if (right - left < 0) { //arb right wall
+		offset.x = 1;
+	}
+
+	if (right - left > 0) { //arb left wall
+		offset.x = -1;
+	}
+
+	if (up - down > 0) { //arb bottom wall
+		offset.y = -1;
+	}
+
+	if (up - down < 0) { //arb top wall
+		offset.y = 1;
+	}
+	
+	if (far - close > 0) { //arb close wall
+		offset.z = -1;
+	}
+	
+	if (far - close <= 0) { //arb far wall
+		offset.z = 1;
+	}
+	*/
+	
+	if (coords3d.x - 1 <= 0) { //left bound
+		offset.x = 1; 
+	}
+
+	if (coords3d.x - res.x+1 >= 0) { //right bound
+		offset.x = -1; 
+	}
+
+	if (coords3d.y - 1 <= 0) { //bottom bound
+		offset.y = 1; 
+	}
+	
+	if (coords3d.y - res.y+1 >= 0) { //top bound
+		offset.y = -1; 
+	}
+
+	if (coords3d.z - 1 <= 0) { //close bound
+		offset.z = 1; 
+	}
+	
+	if (coords3d.z - res.z+1 >= 0) { //far bound
+		offset.z = -1; 
+	}
+	return offset;
+}

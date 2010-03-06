@@ -1,0 +1,157 @@
+#include "Utils.cg"
+
+
+/**
+ * Performs 1 jacobi iteration (4 components)
+ * 
+ * @param x 'x' (for Ax = b)
+ * @param b 'b' (for Ax = b)
+ * @param coords current coords
+ * @param alpha
+ * @param beta
+ * @return value of next iteration
+ */
+float4 F4Jacobi2D(uniform samplerRECT x, //for Ax = b
+			  uniform samplerRECT b, //for Ax = b
+			  float2 coords : TEXCOORD0, 
+			  uniform float alpha, 
+			  uniform float beta) : COLOR
+{
+	float4 a = texRECT(b, coords);
+	float4 left, right, up, down;
+	F4Neighbours2D(x, coords, left, right, up, down);
+	
+	float4 result = (left + right + up + down + alpha*a) / beta;
+	return result;
+}
+
+/**
+ * Performs 1 jacobi iteration (1 component)
+ * 
+ * @param x 'x' (for Ax = b)
+ * @param b 'b' (for Ax = b)
+ * @param coords current coords
+ * @param alpha
+ * @param beta
+ * @return value of next iteration
+ */
+float F1Jacobi2D(uniform samplerRECT x, //for Ax = b
+			  uniform samplerRECT b, //for Ax = b
+			  float2 coords : TEXCOORD0, 
+			  uniform float alpha, 
+			  uniform float beta) : COLOR
+{
+	float a = texRECT(b, coords);
+	float left, right, up, down;
+	F1Neighbours2D(x, coords, left, right, up, down);
+
+	float result = (left + right + up + down + alpha*a) / beta;
+
+	return result;
+}
+
+/**
+ * \brief Performs 1 step of jacobi iteration
+ * 
+ * This performs 1 jacobi iteration, defined as
+ * [result = (left + right + up + down + close + far + alpha*b) / beta]
+ * for each element
+ *
+ * @param coords The texture coordinates
+ * @param x For Ax = b
+ * @param b For Ax = b
+ * @param alpha The alpha parameter used in the iteration
+ * @param beta The beta parameter used in the iteration
+ * @param res the resolution
+ * @param slabs The number of slabs in each dimension
+ */
+float4 F4Jacobi3D(float2 coords : TEXCOORD0, 
+				uniform samplerRECT x, //for Ax = b
+				uniform samplerRECT b, //for Ax = b
+				uniform float alpha, 
+				uniform float beta,
+				uniform float3 res,
+				uniform int2 slabs) : COLOR
+{
+
+	float4 a = texRECT(b, coords);
+	float4 left, right, up, down, close, far;
+	
+	float3 s = Tex2D3D(coords, res, slabs);
+	
+	F4Neighbours3D(x, s, res, slabs, left, right, up, down, close, far); //default 3d
+	
+	float4 result = (left + right + up + down + close + far + alpha*a) / beta;
+	
+	return result;
+}
+
+/**
+ * \brief Performs 1 step of jacobi iteration
+ * 
+ * This performs 1 jacobi iteration, defined as
+ * [result = (left + right + up + down + close + far + alpha*b) / beta]
+ * for each element
+ *
+ * @param coords The texture coordinates
+ * @param x For Ax = b
+ * @param b For Ax = b
+ * @param alpha The alpha parameter used in the iteration
+ * @param beta The beta parameter used in the iteration
+ * @param res the resolution
+ * @param slabs The number of slabs in each dimension
+ */
+float F1Jacobi3D(float2 coords : TEXCOORD0, 
+				uniform samplerRECT x, //for Ax = b
+				uniform samplerRECT b, //for Ax = b
+				uniform float alpha, 
+				uniform float beta,
+				uniform float3 res,
+				uniform int2 slabs) : COLOR
+{
+
+	float a = texRECT(b, coords).x;
+	float left, right, up, down, close, far;
+	
+	float3 s = Tex2D3D(coords, res, slabs);
+	F1Neighbours3D(x, s, res, slabs, left, right, up, down, close, far); //default 3d
+	
+	float result = (left + right + up + down + close + far + alpha*a) / beta;
+	
+	return result;
+}
+
+/**
+ * \brief Performs 1 step of jacobi iteration
+ * 
+ * This performs 1 jacobi iteration, defined as
+ * [result = (left + right + up + down + close + far + alpha*b) / beta]
+ * for each element
+ *
+ * @param coords The texture coordinates
+ * @param x For Ax = b
+ * @param b For Ax = b
+ * @param alpha The alpha parameter used in the iteration
+ * @param beta The beta parameter used in the iteration
+ * @param res the resolution
+ * @param slabs The number of slabs in each dimension
+ */
+half H1Jacobi3D(float2 coords : TEXCOORD0, 
+				uniform samplerRECT x, //for Ax = b
+				uniform samplerRECT b, //for Ax = b
+				uniform float alpha, 
+				uniform float beta,
+				uniform float3 res,
+				uniform int2 slabs) : COLOR
+{
+
+	half a = texRECT(b, coords).x;
+	half left, right, up, down, close, far;
+	
+	half3 s = Tex2D3D(coords, res, slabs);
+	h1texRECTneighbours(x, s, res, slabs, left, right, up, down, close, far); //default 3d
+	
+	half result = (left + right + up + down + close + far + alpha*a) / beta;
+	
+	return result;
+}

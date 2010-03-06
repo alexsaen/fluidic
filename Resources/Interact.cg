@@ -1,0 +1,147 @@
+#include "Utils.cg"
+
+/**
+ * Injects some data at a position on the texture.
+ *
+ * @param coords coordinates of the current pixel
+ * @param scale size of the data to add
+ * @param data texture to add ink to
+ * @param color components to add to texture
+ * @param p point to add data at
+ * @return the new data
+ */
+float4 Inject2D(
+			float2 coords : TEXCOORD0,
+			uniform float scale,
+			uniform samplerRECT data,
+			uniform float4 color,
+			uniform float2 p) : COLOR
+{
+	float4 returnVal = texRECT(data, coords);
+
+	float mag = length(p.xy - coords);
+	
+	// Commented out line below for a 'soft' dot. not done yet.
+	//returnVal = returnVal + 0.1*exp(-mag*0.1)*color;
+
+	if (mag < scale)
+	{
+		returnVal += color;
+	}
+		
+	return returnVal;
+}
+			
+/**
+ * Moves the velocity based on the data
+ * 
+ * @param velocity
+ * @param data
+ * @param d (dx, dy, 0, dt) for the velocity texture
+ * @param dData (dx, dy, 0, dt) for the data texture
+ * @param densities density of each component of the data
+ * @param coords
+ */
+float4 Perturb2D (uniform samplerRECT velocity,
+				uniform samplerRECT data,
+				uniform float4 d,
+				uniform float4 dData,
+				uniform float3 densities,
+				float2 coords : TEXCOORD0) : COLOR
+{
+	float2 c = coords;
+	c.x /= d.x;
+	c.y /= d.y;
+	float4 col = texRECT(data, c);
+	float density = dot(col.rgb, densities.rgb);	
+	
+	float4 vel = texRECT(velocity, coords);
+	vel.y += density * d.a;
+	
+	return vel;
+}
+
+/**
+ * \brief Injects ink into the data
+ * 
+ * @param coords The texture coordinates
+ * @param data The texture to inject ink into
+ * @param color rgb of the colour to inject
+ * @param p x,y,z position to inject at
+ * @param res the resolution
+ * @param slabs The number of slabs in each dimension
+ */
+float4 Inject3D(
+			float2 coords : TEXCOORD0,
+			uniform samplerRECT data,
+			uniform float4 color,
+			uniform float4 p,
+			uniform float3 res,
+			uniform int2 slabs) : COLOR
+{
+	float4 returnVal = texRECT(data, coords);
+
+	float3 coords3d = Tex2D3D(coords, res, slabs);
+	//find distance from coords to p
+	float3 vec = p.xyz - coords3d;
+	float mag = length(vec);
+	
+	//draw dot if that distance is large than 100
+	//returnVal = returnVal + 0.1*exp(-mag*0.1)*color;
+	float3 bound = res / 12;
+
+	/*
+	if (abs(vec.x) < bound.x && abs(vec.y) < bound.y && abs(vec.z) < bound.z) {
+		returnVal = color;
+	}
+	*/
+	
+	if (mag < min(min(bound.x, bound.y),bound.z))
+	{
+		returnVal = color;
+		//returnVal = returnVal + 0.1*color;
+		//returnVal = float4(0, 1, 0, 0);
+	}
+	returnVal.w = 0;
+	return returnVal;
+}
+
+
+/**
+ * \brief Perturbs the velocity based on the data value
+ * 
+ * @param coords The texture coordinates
+ * @param velocity The velocity field
+ * @param data The data values in the field
+ * @param d dx, dy, dz and dt - spatial and time differences
+ * @param res the resolution
+ * @param slabs The number of slabs in each dimension
+ */
+float4 Perturb3D (float2 coords : TEXCOORD0,
+				uniform samplerRECT velocity,
+				uniform samplerRECT data,
+				uniform float4 d,
+				uniform float3 densities) : COLOR
+{
+	float4 col = texRECT(data, coords);
+	float density = dot(col.rgb, densities.xyz);	
+	
+	float4 vel = texRECT(velocity, coords);
+	vel.y += density * d.a;
+	
+	return vel;
+
+	/*
+	float4 density;
+	float4 vel = texRECT(velocity, coords);
+	//return vel;
+	float4 col = texRECT(data, coords);
+		
+	float density = dot(col.rgb, densities.rgb);	
+	
+	float4 vel = texRECT(velocity, coords);
+	vel.y += density * d.a;
+
+	return vel + density*d.w;
+	*/
+}

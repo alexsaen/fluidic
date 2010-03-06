@@ -1,0 +1,47 @@
+#include "utils.cg"
+
+/**
+ * \brief Sets the alpha value of each pixel based on its illumination
+ * 
+ * @param coords The texture coordinates
+ * @param data The data to illuminate
+ * @param dir direction of light
+ * @param res the resolution
+ * @param slabs The number of slabs in each dimension
+ */
+float4 Illuminate3D (
+			float2 coords : TEXCOORD0,
+			uniform samplerRECT data,
+			uniform float4 dir,
+			uniform float3 res,
+			uniform int2 slabs) : COLOR
+{
+	//current value of data
+	float4 returnVal = texRECT(data, coords);
+	returnVal.a = 1;
+	bool done = false;
+	float3 lightDir = float3(0, 0, -1);
+	float3 coords3d = Tex2D3D(coords, res, slabs);
+	
+	float2 pos2d;
+	float3 pos3d = float3(coords3d.x, coords3d.y, 1);//coords3d.z);
+
+
+	float stepSize = 0.05; //20 steps on the biggest part
+	float len = length(coords3d - pos3d)/res.x; //size (in [0,1] of ray
+	
+	int numSteps = len / stepSize;
+	
+	
+	float4 color_sample;
+	
+	for (int i=0; i<numSteps; i++) {
+		color_sample = F4Trilerp(data, pos3d, res, slabs);
+		//color_sample.rgb = float3(1.0,0.0,0.0);
+		
+		returnVal.a -= length(color_sample.r) * stepSize * 3;
+		pos3d += lightDir * stepSize * res.x;
+	}
+	//returnVal.b = returnVal.a;
+	return returnVal;
+}
