@@ -42,6 +42,8 @@ namespace Fluidic
 		void Update(float time);
 		void Render();
 
+		static FluidOptions DefaultOptions();
+
 	private:
 		// Methods...
 		void InitCallLists();

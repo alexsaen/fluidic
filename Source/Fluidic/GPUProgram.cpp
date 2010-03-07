@@ -44,6 +44,8 @@ void GPUProgram::SetProgram(CGcontext context, const char *filename, CGprofile p
 		profile,
 		programName,
 		0 );
+
+	if (mProgram == 0) throw "Could not load program";
 	cgGLLoadProgram(mProgram);
 }
 

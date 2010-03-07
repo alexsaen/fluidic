@@ -45,7 +45,7 @@ using namespace Fluidic;
 Fluid3D::Fluid3D(std::string cgHomeDir) :
 Fluid(cgHomeDir), mSlabs(0,0)
 {
-	mCgVertexProfile = cgGLGetLatestProfile(CG_GL_VERTEX);
+	mCgVertexProfile = CG_PROFILE_VP40;
 }
 
 Fluid3D::~Fluid3D(void)
@@ -64,7 +64,16 @@ Fluid3D::~Fluid3D(void)
 	delete mPerturb;
 	delete mZCull;
 }
-
+FluidOptions Fluid3D::DefaultOptions()
+{
+	FluidOptions options;
+	options.Size = Vector(1,1,1);
+	options.SolverResolution = Vector(64,64,64);
+	options.RenderResolution = Vector(400, 400);
+	options.Viscosity = ViscosityAir;
+	options.SolverOptions = RS_NICE;
+	return options;
+}
 void Fluid3D::InitTextures() {
 
 	mTextures = new GLuint[11];

@@ -33,7 +33,7 @@ mFramebufferId(0), mRenderbufferId(0), mCurrentBoundTexture(-1), mFluidCallListI
 mPollFrame(0), mCgHomeDir(cgHomeDir)
 {
 	mCgContext = cgCreateContext();
-	mCgFragmentProfile = cgGLGetLatestProfile(CG_GL_FRAGMENT);
+	mCgFragmentProfile = CG_PROFILE_FP40;
 	ready = 0;
 }
 

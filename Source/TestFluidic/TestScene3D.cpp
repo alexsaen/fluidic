@@ -32,11 +32,7 @@ TestScene3D::TestScene3D()
 : moving(false), injectZPos(0.5f)
 {
 	fluid = new Fluid3D(CG_PROGRAM_DIR);
-	options.RenderResolution = Vector(400, 400);
-	options.SolverResolution = Vector(64, 64, 64);
-	options.Size = Vector(1, 1, 1);
-	options.SolverOptions = RS_NICE | RS_DOUBLE_PRECISION;
-	options.Viscosity = 0;//ViscosityAir;
+	options = Fluid3D::DefaultOptions();
 	fluid->Init(options);
 	fluid->SetColorDensities(1, 0, -1);
 	

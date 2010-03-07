@@ -28,12 +28,7 @@ using namespace TestFluidic;
 TestScene2D::TestScene2D()
 {
 	fluid = new Fluid2D(CG_PROGRAM_DIR);
-
-	options.Size = Vector(1, 1);
-	options.RenderResolution = Vector(400, 400);
-	options.SolverResolution = Vector(200, 200);
-	options.SolverOptions = RS_NICE;
-	options.Viscosity = ViscosityAir;
+	options = Fluid2D::DefaultOptions();
 	fluid->Init(options);
 	fluid->SetColorDensities(1, 0, -1);
 	

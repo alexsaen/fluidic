@@ -64,7 +64,16 @@ Fluid2D::~Fluid2D(void)
 	delete mPerturb;
 	delete mZCull;
 }
-
+FluidOptions Fluid2D::DefaultOptions()
+{
+	FluidOptions options;
+	options.Size = Vector(1,1);
+	options.SolverResolution = Vector(200, 200);
+	options.RenderResolution = Vector(400, 400);
+	options.Viscosity = ViscosityAir;
+	options.SolverOptions = RS_NICE;
+	return options;
+}
 void Fluid2D::InitTextures() {
 	mTextures = new GLuint[9];
 

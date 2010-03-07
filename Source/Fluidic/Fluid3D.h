@@ -42,6 +42,7 @@ namespace Fluidic
 		void InjectCheckeredData();
 		void Update(float time);
 		void Render();
+		static FluidOptions DefaultOptions();
 
 	private:
 		inline int Index(int x, int y, int z) {
