@@ -39,7 +39,8 @@ const char *GPUProgramLoader3D::GetPathTo(char *program)
 GPUProgram *GPUProgramLoader3D::Advect() 
 {
 	GPUProgram *program = new GPUProgram();
-	program->SetProgram(mCgContext, GetPathTo("Advect"), mCgFragmentProfile, "SimpleAdvect3D");
+	//program->SetProgram(mCgContext, GetPathTo("Advect"), mCgFragmentProfile, "SimpleAdvect3D");
+	program->SetProgram(mCgContext, GetPathTo("Advect"), mCgFragmentProfile, "Advect3D");
 	program->AddParam("velocity");
 	program->AddParam("data");
 	program->AddParam("d");

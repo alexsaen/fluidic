@@ -152,8 +152,6 @@ namespace Fluidic
 		void DoCalculationSolver1D(int &textureIndex);
 		void DoCalculationData(int &textureIndex);
 
-		void Poll(float time);
-
 		static void CopyFromCPUtoGPU(GLuint textureTarget, GLuint texId, int texSizeX, int texSizeY, float *cpuData);
 
 		FluidOptions mOptions;

@@ -2,11 +2,10 @@
 
 
 /**
- * Complex advection
+ * 2 step advection
  * Advects the 'data' texture by the velocity given over the timestep given.
- * This is a higher accuracy version, which uses the average of this and the previous
- * velocity to advect.
- * WARNING: Not working satisfactorily (todo)
+ * This is a higher accuracy version, which uses the error in the step back as an estimator of the
+ * error in advection
  *
  * @param coords coordinates of the current pixel
  * @param data the data texture - will be advected
@@ -19,57 +18,35 @@ float4 Advect2D (
 			float2 coords : TEXCOORD0,
 			uniform samplerRECT data,
 			uniform samplerRECT velocity,
-			uniform samplerRECT boundary, 
+			uniform samplerRECT boundary,
+			uniform float2 scale,
 			uniform float4 d) : COLOR
 {
-	float4 returnData, currData, stepBackData, stepForwardData;
-	float2 currVel;
-	float2 stepBackCoords, stepForwardCoords;
-	float2 stepBackVel, stepForwardVel;
-	float2 avgVel;
-
-	float2 alpha = d.w/float2(d.x, d.y);
+	half4 returnVal;
+	half2 currVel;
+	half2 stepBackCoords, stepForwardCoords;
+	half2 alpha = d.w/d.xy;
 	
-	//do a texture lookup to get the current velocity/data
-	currVel = (texRECT(velocity, coords)).xy;
-	currData = (texRECT(data, coords));
-
-	//step back a timestep to get the previous velocity (phi n-1)
-	stepBackCoords = coords - alpha * currVel;
-	stepBackVel = texRECT(velocity, stepBackCoords).xy;
-	stepBackData = (texRECT(data, stepBackCoords));
+	//do a texture lookup to get the velocity
+	currVel = (texRECT(velocity, coords*scale)).xy;
 	
+	//step back a timestep to get the previous velocity
+	stepBackCoords = coords*scale - alpha * currVel;
+
+	//if it's a boundary, return base value
+	float bnd = texRECT(boundary, stepBackCoords);
 	
-/*
-	//return stepBackData;
-	stepBackData = F4Bilerp(data, stepBackCoords);
-	stepForwardCoords = stepBackCoords + alpha * stepBackVel;
-	stepForwardVel = texRECT(velocity, stepForwardCoords).xy;
-	//stepForwardData = (texRECT(data, stepForwardCoords));
-	stepForwardData = F4Bilerp(data, stepForwardCoords);
-
-	returnData = stepForwardData - 0.5*(currData - stepBackData);
-	return returnData;
-*/
-	
-	// average the previous velocity with this one for a closer estimate
-	// for the advection velocity.
-	avgVel = (currVel + stepBackVel)/2;
-
-	//step back again, using the new and improved velocity
-	stepBackCoords = coords - alpha * avgVel;
-
-/*
-	// a hack I put in for some reason I can't remember. Something to do with 
-	if (currData.xy != currVel) {	    
-		returnData = (1 - d.w*0.01*0) * f4texRECTbilerp(data, stepBackCoords);
+	if (bnd > 0) {
+		returnVal = texRECT(data, coords);
 	} else {
-		returnData = F4Bilerp(data, stepBackCoords);
+		//interpolate the step back position and return
+		float4 nextVel = F4Bilerp(velocity, stepBackCoords/scale);
+		stepForwardCoords = stepBackCoords + alpha * nextVel.xy;
+		stepBackCoords = stepBackCoords + (stepBackCoords - stepForwardCoords) / 2;
+		returnVal = F4Bilerp(data, stepBackCoords/scale);
 	}
-*/
-	//interpolate the step back position and return
-	returnData = F4Bilerp(data, stepBackCoords);
-	return returnData;
+	//returnVal = texRECT(data, stepBackCoords);
+	return returnVal;
 }
 
 /**
@@ -118,7 +95,7 @@ half4 SimpleAdvect2D (
 }
 
 /**
- * \brief Advects data by velocity (more accurate, unstable version)
+ * \brief Advects data by velocity (more accurate version)
  * 
  * Advection is the component of navier-stokes equations that
  * transports the field along the vector-field direction.
@@ -139,34 +116,41 @@ float4 Advect3D (
 			float2 coords : TEXCOORD0,
 			uniform samplerRECT data,
 			uniform samplerRECT velocity,
+			uniform samplerRECT boundary,
 			uniform float4 d,
 			uniform float3 res,
 			uniform int2 slabs) : COLOR
 {
 	float4 returnVal;
-	float2 currVel;
-	float2 stepBackCoords;
-	float2 stepBackVel;
-	float2 avgVel;
-
-	float2 alpha = d.w/float2(d.x, d.y);
+	float3 currVel;
+	float3 coords3d;
+	float3 stepBackCoords3d, stepForwardCoords3d;
+	float2 stepBackCoords2d;
+	float3 alpha = d.w/float3(d.x, d.y, d.z);
 
 	//do a texture lookup to get the velocity
-	currVel = (texRECT(velocity, coords)).xy;
+	currVel = (texRECT(velocity, coords)).xyz;
 
+	coords3d = Tex2D3D(coords, res, slabs);
+	
 	//step back a timestep to get the previous velocity
-	stepBackCoords = coords - alpha * currVel;
-	stepBackVel = texRECT(velocity, stepBackCoords).xy;
+	stepBackCoords3d = coords3d - alpha * currVel;
 
-	//average the previous velocity with this one for a closer estimate
-	//on the advection amount.
-	avgVel = (currVel + stepBackVel)/2;
+	//if it's a boundary, return base value
+	stepBackCoords2d = Tex3D2D(stepBackCoords3d, res, slabs);
+	float bnd = texRECT(boundary, stepBackCoords2d);
+	if (bnd > 0) {
+		returnVal = texRECT(data, coords);
+	} else {
+		//interpolate the step back position and return
+		float4 nextVel = F4Trilerp(velocity, stepBackCoords3d, res, slabs);
+		stepForwardCoords3d = stepBackCoords3d + alpha * nextVel.xyz;
+		stepBackCoords3d = stepBackCoords3d + (stepBackCoords3d - stepForwardCoords3d) / 2;
 
-	//step back again, using the new and improved velocity
-	stepBackCoords = coords - alpha * avgVel;
+		stepBackCoords3d = clamp(stepBackCoords3d, float3(0.5,0.5,0.5), res-float3(0.5,0.5,0.5));
+		returnVal = F4Trilerp(data, stepBackCoords3d, res, slabs);
+	}
 
-	//interpolate the step back position and return
-	returnVal = f4texRECTbilerp(data, stepBackCoords);
 	return returnVal;
 }
 
@@ -213,9 +197,14 @@ float4 SimpleAdvect3D (
 	stepBackCoords3d = coords3d - alpha * currVel;
 
 	//if it's a boundary, return base value
-	stepBackCoords3d = clamp(stepBackCoords3d, float3(0.5,0.5,0.5), res-float3(0.5,0.5,0.5));
-
-	returnVal = F4Trilerp(data, stepBackCoords3d, res, slabs);
+	stepBackCoords2d = Tex3D2D(stepBackCoords3d, res, slabs);
+	float bnd = texRECT(boundary, stepBackCoords2d);
+	if (bnd > 0) {
+		returnVal = texRECT(data, coords);
+	} else {
+		stepBackCoords3d = clamp(stepBackCoords3d, float3(0.5,0.5,0.5), res-float3(0.5,0.5,0.5));
+		returnVal = F4Trilerp(data, stepBackCoords3d, res, slabs);
+	}
 
 	return returnVal;
 }

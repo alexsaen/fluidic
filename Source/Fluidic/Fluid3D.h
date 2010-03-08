@@ -45,21 +45,23 @@ namespace Fluidic
 		static FluidOptions DefaultOptions();
 
 	private:
+		static const int SlicesPerRow = 8;
+
 		inline int Index(int x, int y, int z) {
 			//transform 3d to 1d index (commenting - easier to read than above #define)
 			return 4 * (
 				x + // x coord INSIDE slab
-				8 * mOptions.SolverResolution.xi() * y + // y coord INSIDE slab
-				(z % 8) * mOptions.SolverResolution.xi() + // moves slab to appropriate x-slab offset
-				(z / 8) * 8 * mOptions.SolverResolution.xi() * mOptions.SolverResolution.yi()// moves slab to appropriate y-slab offset
+				SlicesPerRow * mOptions.SolverResolution.xi() * y + // y coord INSIDE slab
+				(z % SlicesPerRow) * mOptions.SolverResolution.xi() + // moves slab to appropriate x-slab offset
+				(z / SlicesPerRow) * SlicesPerRow * mOptions.SolverResolution.xi() * mOptions.SolverResolution.yi()// moves slab to appropriate y-slab offset
 			); 
 		}
 		
 		inline Vector Coords2D(Vector pos) {
 			//transform 3d coords to 2d coords (commenting - easier to read than above #define)
 			return Vector(
-				pos.x + (pos.zi() % 8)* mOptions.SolverResolution.xi(),
-				pos.y + (pos.zi() / 8)* mOptions.SolverResolution.yi()
+				pos.x + (pos.zi() % SlicesPerRow)* mOptions.SolverResolution.xi(),
+				pos.y + (pos.zi() / SlicesPerRow)* mOptions.SolverResolution.yi()
 			); 
 		}
 

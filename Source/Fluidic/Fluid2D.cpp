@@ -71,7 +71,7 @@ FluidOptions Fluid2D::DefaultOptions()
 	options.SolverResolution = Vector(200, 200);
 	options.RenderResolution = Vector(400, 400);
 	options.Viscosity = ViscosityAir;
-	options.SolverOptions = RS_NICE;
+	options.SolverOptions = RS_NICE | RS_DOUBLE_PRECISION;
 	return options;
 }
 void Fluid2D::InitTextures() {
@@ -367,7 +367,6 @@ void Fluid2D::GenerateCircularVortex()
 	cpuVelocity = 0;
 }
 
-// FIXME: FLuid2D::Poll 
 // Do only if list is not empty, use time based stuff
 // It would be good to get the curl here as well, for coolness.
 // Should be based time, not frames?

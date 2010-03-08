@@ -23,7 +23,6 @@ THE SOFTWARE.
 #include "Fluid.h"
 #include "Debug.h"
 #include "GPUProgram.h"
-//fixme I don't need the definition of the class for this? CRAAZY! #include "IVelocityPoller.h"
 
 using namespace std;
 using namespace Fluidic;
@@ -141,29 +140,6 @@ void Fluid::DetachPoller(IVelocityPoller *poller)
 	mVelocityPollers.remove(poller);
 }
 
-// FIXME: Fluid::Poll 
-// Do only if list is not empty, use time based stuff
-// It would be good to get the curl here as well, for coolness.
-// Should be based time, not frames?
-void Fluid::Poll(float time)
-{
-	time=time; // Compiler warning - may be used in future. TODO.
-/*
-	static float pixels[3];
-	// in the velocity texture, and use it when doing the div?
-	if (mPollFrame++ % 20 == 0)
-	{
-		SetOutputTexture(velocity);
-		//foreach
-		for (VelocityPollerList::iterator it = mVelocityPollers.begin(); it != mVelocityPollers.end(); it++)
-		{
-			const Vector &position = (*it)->GetPosition() * mOptions.SolverResolution / mOptions.Size;
-			glReadPixels(position.xi(), position.yi(), 1, 1, GL_RGB, GL_FLOAT, &pixels);
-			(*it)->UpdateVelocity(Vector(pixels[0], pixels[1], pixels[2]));
-		}
-	}*/
-}
-
 /** Helpers */
 void Fluid::SetOutputTexture(const int textureIndex)
 {
@@ -213,13 +189,6 @@ void Fluid::SetResolution(Vector resolution)
 	ready = 0;
 	mOptions.SolverResolution = resolution;
 }
-
-/* FIXME I reckon this can be abstracted
-void Fluid::SetColorDensities(float r, float g, float b)
-{
-	mPerturb->SetParam("densities", r, g, b);
-}
-/**/
 
 void Fluid::CopyFromCPUtoGPU(GLuint textureTarget, GLuint texId, int x, int y, float *cpuData)
 {

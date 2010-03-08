@@ -71,7 +71,7 @@ FluidOptions Fluid3D::DefaultOptions()
 	options.SolverResolution = Vector(64,64,64);
 	options.RenderResolution = Vector(400, 400);
 	options.Viscosity = ViscosityAir;
-	options.SolverOptions = RS_NICE;
+	options.SolverOptions = RS_NICE | RS_DOUBLE_PRECISION;
 	return options;
 }
 void Fluid3D::InitTextures() {
@@ -143,8 +143,7 @@ void Fluid3D::InitTextures() {
 
 void Fluid3D::InitCallLists()
 {
-	// FIXME: Magic number
-	mSlabs = Vector(8.f, mOptions.SolverResolution.zi()/8.f);
+	mSlabs = Vector((float)SlicesPerRow, (float)mOptions.SolverResolution.zi()/SlicesPerRow);
 
 	//delete the existing lists
 	if (mFluidCallListId) glDeleteLists(mFluidCallListId, 3);
@@ -539,7 +538,6 @@ void Fluid3D::GenerateCircularVortex()
 	cpuVelocity = 0;
 }
 
-// FIXME: FLuid3D::Poll 
 // Do only if list is not empty, use time based stuff
 // It would be good to get the curl here as well, for coolness.
 // Should be based time, not frames?
@@ -749,8 +747,8 @@ void Fluid3D::InjectInkStep()
 		glColor4f(inj.color.x, inj.color.y, inj.color.z, 1.f);
 
 		for (; y <= endY; y++) {
-			float xOffset = (float)(y % 8)*mOptions.SolverResolution.x; //FIXME magic number
-			float zOffset = (float)(y / 8)*mOptions.SolverResolution.z; //FIXME magic number. also, confusing
+			float xOffset = (float)(y % SlicesPerRow)*mOptions.SolverResolution.x; //FIXME magic number
+			float zOffset = (float)(y / SlicesPerRow)*mOptions.SolverResolution.z; //FIXME magic number. also, confusing
 
 			glBegin(GL_QUADS);
 				glVertex3f(xOffset + pos.x,		zOffset + pos.z, 1);
