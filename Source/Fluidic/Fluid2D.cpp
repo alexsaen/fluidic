@@ -32,7 +32,7 @@ using namespace Fluidic;
 
 //do not include imdebug normally - just for debugging purposes.
 #ifdef _DEBUG
-#define _IM_TEXTURE_DEBUG 1 // Comment this line out if imdebug is not available / wanted
+//#define _IM_TEXTURE_DEBUG 1 // Comment this line out if imdebug is not available / wanted
 #endif
 #ifdef _IM_TEXTURE_DEBUG
 	#include <imdebug.h>
@@ -139,53 +139,17 @@ void Fluid2D::InitCallLists()
 
 	//solver list - size=SolverResolution, textures SolverResolution
 	glNewList(mFluidCallListId + SolverCallListOffset, GL_COMPILE);
-		glBegin(GL_QUADS);
-			glTexCoord2f(0.0, 0.0); 
-			glVertex3f(0.0, 0.0, 1.0);
-
-			glTexCoord2f(mOptions.SolverResolution.x, 0.0);
-			glVertex3f(mOptions.SolverResolution.x, 0.0, 1.0);
-
-			glTexCoord2f(mOptions.SolverResolution.x, mOptions.SolverResolution.y);
-			glVertex3f(mOptions.SolverResolution.x, mOptions.SolverResolution.y, 1.0);
-
-			glTexCoord2f(0.0, mOptions.SolverResolution.y);
-			glVertex3f(0.0, mOptions.SolverResolution.y, 1.0);
-		glEnd();
+	DrawSolverQuad(mOptions.SolverResolution, mOptions.SolverResolution, 1.f);
 	glEndList();
 	
 	//data list - size=RenderResolution, textures RenderResolution
 	glNewList(mFluidCallListId + RenderDataCallListOffset, GL_COMPILE);
-		glBegin(GL_QUADS);
-			glTexCoord2f(0.0, 0.0); 
-			glVertex3f(0.0, 0.0, 1.0);
-
-			glTexCoord2f(mOptions.RenderResolution.x, 0.0);
-			glVertex3f(mOptions.RenderResolution.x, 0.0, 1.0);
-
-			glTexCoord2f(mOptions.RenderResolution.x, mOptions.RenderResolution.y);
-			glVertex3f(mOptions.RenderResolution.x, mOptions.RenderResolution.y, 1.0f);
-
-			glTexCoord2f(0.0, mOptions.RenderResolution.y);
-			glVertex3f(0.0, mOptions.RenderResolution.y, 1.0);
-		glEnd();
+	DrawSolverQuad(mOptions.RenderResolution, mOptions.RenderResolution, 1.f);
 	glEndList();
 
 	//render list - size=Size; textures RenderResolution
 	glNewList(mFluidCallListId + RenderCallListOffset, GL_COMPILE);
-		glBegin(GL_QUADS);
-			glTexCoord2f(0.0, 0.0); 
-			glVertex3f(0.0, 0.0, 0.0);
-
-			glTexCoord2f(mOptions.RenderResolution.x, 0.0);
-			glVertex3f(mOptions.Size.x, 0.0, 0.0);
-
-			glTexCoord2f(mOptions.RenderResolution.x, mOptions.RenderResolution.y);
-			glVertex3f(mOptions.Size.x, mOptions.Size.y, 0.0);
-
-			glTexCoord2f(0.0, mOptions.RenderResolution.y);
-			glVertex3f(0.0, mOptions.Size.y, 0.0);
-		glEnd();
+	DrawSolverQuad(mOptions.RenderResolution, mOptions.Size, 0.f);
 	glEndList();
 }
 
@@ -620,42 +584,48 @@ void Fluid2D::PerturbDensityStep(float time)
 void Fluid2D::UpdateArbitraryBoundaryStep()
 {
 	if (!ready) return;
-	if (mBoundaries.empty()) return;
-
-	cgGLDisableProfile(mCgFragmentProfile);
-
-	SetOutputTexture(outputSolver);
-
-	//render existing boundaries
-	glEnable(GL_TEXTURE_RECTANGLE_ARB);
-	glBindTexture(GL_TEXTURE_RECTANGLE_ARB, mTextures[boundaries]);
-	glCallList(mFluidCallListId + SolverCallListOffset);
-	glDisable(GL_TEXTURE_RECTANGLE_ARB);
-
-	//render boundary for each bit
-	glColor3f(1, 1, 1);
-	for (BoundaryList::iterator it = mBoundaries.begin(); it != mBoundaries.end(); ++it)
-	{
-		Boundary boundary = *it;
-		Vector d(boundary.size, boundary.size);
-		Vector p(boundary.position - d/2);
-		d = d / mOptions.Size * mOptions.SolverResolution;
-		p = p / mOptions.Size * mOptions.SolverResolution;
-
-		glBegin(GL_QUADS);
-			glVertex3f(p.x,		p.y,		1);
-			glVertex3f(p.x+d.x,	p.y,		1);
-			glVertex3f(p.x+d.x,	p.y+d.y,	1);
-			glVertex3f(p.x,		p.y+d.y,	1);
-		glEnd();
-	}
-	glColor3f(0,0,0);
-
-	//swap textures
-	std::swap(outputSolver, boundaries);
-	cgGLEnableProfile(mCgFragmentProfile);
 	
-	mBoundaries.clear();
+	if (mNextBoundaryTexture)
+	{
+		SetBoundaryTextureStep();
+	}
+
+	if (!mBoundaries.empty()) {
+		cgGLDisableProfile(mCgFragmentProfile);
+
+		SetOutputTexture(outputSolver);
+
+		//render existing boundaries
+		glEnable(GL_TEXTURE_RECTANGLE_ARB);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, mTextures[boundaries]);
+		glCallList(mFluidCallListId + SolverCallListOffset);
+		glDisable(GL_TEXTURE_RECTANGLE_ARB);
+
+		//render boundary for each bit
+		glColor3f(1, 1, 1);
+		for (BoundaryList::iterator it = mBoundaries.begin(); it != mBoundaries.end(); ++it)
+		{
+			Boundary boundary = *it;
+			Vector d(boundary.size, boundary.size);
+			Vector p(boundary.position - d/2);
+			d = d / mOptions.Size * mOptions.SolverResolution;
+			p = p / mOptions.Size * mOptions.SolverResolution;
+
+			glBegin(GL_QUADS);
+				glVertex3f(p.x,		p.y,		1);
+				glVertex3f(p.x+d.x,	p.y,		1);
+				glVertex3f(p.x+d.x,	p.y+d.y,	1);
+				glVertex3f(p.x,		p.y+d.y,	1);
+			glEnd();
+		}
+		glColor3f(0,0,0);
+
+		//swap textures
+		std::swap(outputSolver, boundaries);
+		cgGLEnableProfile(mCgFragmentProfile);
+		
+		mBoundaries.clear();
+	}
 }
 
 /** Steps - Boundaries */

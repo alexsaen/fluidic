@@ -24,15 +24,29 @@ THE SOFTWARE.
 #include "Debug.h"
 #include "GPUProgram.h"
 
+//do not include imdebug normally - just for debugging purposes.
+#ifdef _DEBUG
+//#define _IM_TEXTURE_DEBUG 1 // Comment this line out if imdebug is not available / wanted
+#endif
+#ifdef _IM_TEXTURE_DEBUG
+	#include <imdebug.h>
+	#include <imdebuggl.h>
+	#pragma comment(lib, "imdebug.lib")
+	#define DEBUGTEX(tex) imdebugTexImagef(GL_TEXTURE_RECTANGLE_ARB, mTextures[tex]);
+#else
+	#define DEBUGTEX(tex)
+#endif
+
 using namespace std;
 using namespace Fluidic;
 
 Fluid::Fluid(std::string cgHomeDir) :
 mFramebufferId(0), mRenderbufferId(0), mCurrentBoundTexture(-1), mFluidCallListId(0), 
-mPollFrame(0), mCgHomeDir(cgHomeDir)
+mPollFrame(0), mCgHomeDir(cgHomeDir), mNextBoundaryTexture(0)
 {
 	mCgContext = cgCreateContext();
-	mCgFragmentProfile = CG_PROFILE_FP40;
+	if (cgGLIsProfileSupported(CG_PROFILE_GPU_FP)) mCgFragmentProfile = CG_PROFILE_GPU_FP;
+	else mCgFragmentProfile = CG_PROFILE_FP40;
 	ready = 0;
 }
 
@@ -101,6 +115,23 @@ void Fluid::SetupTexture(GLuint texId, GLuint internalFormat, Vector resolution,
 	glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, internalFormat, resolution.xi(), resolution.yi(), 0, format, GL_FLOAT, &initialData[0]);
 }
 
+void Fluid::DrawSolverQuad(const Fluidic::Vector &textureSize, const Vector &quadSize, float z)
+{
+	glBegin(GL_QUADS);
+		glTexCoord2f(0.0, 0.0); 
+		glVertex3f(0.0, 0.0, z);
+
+		glTexCoord2f(textureSize.x, 0.0);
+		glVertex3f(quadSize.x, 0.0, z);
+
+		glTexCoord2f(textureSize.x, textureSize.y);
+		glVertex3f(quadSize.x, quadSize.y, z);
+
+		glTexCoord2f(0.0, textureSize.y);
+		glVertex3f(0.0, quadSize.y, z);
+	glEnd();
+}
+
 /** Interactions */
 void Fluid::Inject(const Vector &position, float r, float g, float b, float size, bool overwrite)
 {
@@ -138,6 +169,34 @@ void Fluid::AttachPoller(IVelocityPoller *poller)
 void Fluid::DetachPoller(IVelocityPoller *poller)
 {
 	mVelocityPollers.remove(poller);
+}
+
+void Fluid::SetBoundaryTexture(GLuint textureId)
+{
+	mNextBoundaryTexture = textureId;
+}
+
+void Fluid::SetBoundaryTextureStep() 
+{
+	cgGLDisableProfile(mCgFragmentProfile);
+	glEnable(GL_TEXTURE_RECTANGLE_ARB);
+	glColor4f(1, 1, 1, 0);
+	glBindTexture(GL_TEXTURE_RECTANGLE_ARB, mNextBoundaryTexture);
+	glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB,  mTextures[outputSolver], 0 );
+	//glCallList(mFluidCallListId + SolverCallListOffset);
+	glClear(GL_COLOR_BUFFER_BIT);
+	DrawSolverQuad(mOptions.SolverResolution*2, mOptions.SolverResolution, 1.f);
+
+	//DoCalculationSolver(boundaries);
+	std::swap(outputSolver, boundaries);
+	mNextBoundaryTexture = 0;
+	glPopMatrix();
+
+	glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB,  0, 0 );
+	cgGLEnableProfile(mCgFragmentProfile);
+	glDisable(GL_TEXTURE_RECTANGLE_ARB);
+	DEBUGTEX(boundaries);
+	
 }
 
 /** Helpers */

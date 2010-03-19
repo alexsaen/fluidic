@@ -1,5 +1,10 @@
 #include "Utils.cg"
-	
+
+#define RENDER_INK 1
+#define RENDER_BOUNDARIES 1
+//#define RENDER_LIC 1
+//#define RENDER_NULLCLINES 1
+
 /**
  * Renders the fluid. By default, only data is used. This method can be changed
  * internally to show LIC and nullclines, in which case velocity is used too.
@@ -31,31 +36,35 @@ float4 Render2D(uniform samplerRECT velocity,
 	bool renderLIC = false;
 	bool renderNullclines = false;
 
-	if (renderFluid) {
-		result =  b+d;
+#ifdef RENDER_INK
+		result = d;
 		// result.a = max(max(result.r, result.g), result.b); // alpha = max of data
 		result.a = clamp((result.r + result.g + result.b)/3, 0, 1); // alpha = average of data
-	}
+#endif
 
-	if (renderLIC) {
-	    // LIC - line inverse convolusion. Very good for seeing the flow of the fluid
-		float curr = randTex(coords);
-		int numSteps = 50;
-	
-		for (int i=0; i<numSteps; i++) {
-			 vel = texRECT(velocity, velPos);
-			 velPos = velPos - vel.xy;
-			 curr = curr + randTex(velPos);
-		}
-		curr = curr/(numSteps+1);
-	
-		if (b.x == 1) curr = 1;
-		result *= 0.5;
-		result += curr*0.5;
-		result.a = 1;
+#ifdef RENDER_BOUNDARIES
+		result.rgb += b.rrr;
+#endif
+
+#ifdef RENDER_LIC
+    // LIC - line inverse convolusion. Very good for seeing the flow of the fluid
+	float curr = randTex(coords);
+	int numSteps = 50;
+
+	for (int i=0; i<numSteps; i++) {
+		 vel = texRECT(velocity, velPos);
+		 velPos = velPos - vel.xy;
+		 curr = curr + randTex(velPos);
 	}
+	curr = curr/(numSteps+1);
+
+	if (b.x == 1) curr = 1;
+	result *= 0.5;
+	result += curr*0.5;
+	result.a = 1;
+#endif
 	
-	if (renderNullclines) {
+#ifdef RENDER_NULLCLINES
 		// Displays y-nullclines in red, x-nullclines in blue. Uses a fairly naive algorithm, so kinda sucks.
 		float  leftX = (texRECT(velocity, coords*scale-float2(1,0)).x);
 		float rightX = (texRECT(velocity, coords*scale+float2(1,0)).x);
@@ -70,7 +79,8 @@ float4 Render2D(uniform samplerRECT velocity,
 			result.g = 1;
 		}
 	}
-	
+#endif
+
 	return result;
 }
 

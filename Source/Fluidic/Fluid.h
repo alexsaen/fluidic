@@ -133,6 +133,8 @@ namespace Fluidic
 		 */
 		void DetachPoller(IVelocityPoller *poller);
 
+		void SetBoundaryTexture(GLuint textureId);
+
 	protected:
 		static const int SolverCallListOffset = 0;
 		static const int RenderDataCallListOffset = 1;
@@ -144,6 +146,7 @@ namespace Fluidic
 		virtual void InitTextures() = 0;
 		virtual void InitBuffers() = 0;
 		void DestroyBuffers();
+		void DrawSolverQuad(const Vector &textureSize, const Vector &quadSize, float z);
 		
 		void SetupTexture(GLuint texId, GLuint internalFormat, Vector resolution, int components, char *initialData);
 
@@ -151,6 +154,8 @@ namespace Fluidic
 		void DoCalculationSolver(int &textureIndex);
 		void DoCalculationSolver1D(int &textureIndex);
 		void DoCalculationData(int &textureIndex);
+
+		void SetBoundaryTextureStep();
 
 		static void CopyFromCPUtoGPU(GLuint textureTarget, GLuint texId, int texSizeX, int texSizeY, float *cpuData);
 
@@ -213,6 +218,9 @@ namespace Fluidic
 		GPUProgram *mOffset;
 		GPUProgram *mPerturb;
 		GPUProgram *mZCull;
+
+		GLuint mNextBoundaryTexture;
+		Vector mNextBoundaryTextureSize;
 
 		/// Textures
 		GLuint *mTextures;

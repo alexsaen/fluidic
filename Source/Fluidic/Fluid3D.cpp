@@ -31,7 +31,7 @@ using namespace Fluidic;
 
 //do not include imdebug normally - just for debugging purposes.
 #ifdef _DEBUG
-#define _IM_TEXTURE_DEBUG 1 // Comment this line out if imdebug is not available / wanted
+//#define _IM_TEXTURE_DEBUG 1 // Comment this line out if imdebug is not available / wanted
 #endif
 #ifdef _IM_TEXTURE_DEBUG
 	#include <imdebug.h>
@@ -615,7 +615,7 @@ void Fluid3D::DiffuseDataStep(float time)
 	mF4Jacobi->SetParam("alpha", alpha);
 	mF4Jacobi->SetParam("beta", beta);
 
-	for (int i=0;i<40;i++)
+	for (int i=0;i<10;i++)
 	{
 		mF4Jacobi->SetParamTex("x", mTextures[data]);
 		mF4Jacobi->SetParamTex("b", mTextures[data]);
@@ -638,7 +638,7 @@ void Fluid3D::DiffuseVelocityStep(float time)
 	mF4Jacobi->SetParam("alpha", alpha);
 	mF4Jacobi->SetParam("beta", beta);
 
-	for (int i=0; i<40; i++)
+	for (int i=0; i<10; i++)
 	{
 		mF4Jacobi->SetParamTex("x", mTextures[velocity]);
 		mF4Jacobi->SetParamTex("b", mTextures[velocity]);
@@ -663,7 +663,7 @@ void Fluid3D::UpdatePressureStep(float time)
 	DoCalculationSolver1D(divField);
 
 	// Find pressure using jacobi iterations
-	for (int i=0;i<40;i++)
+	for (int i=0;i<10;i++)
 	{
 		mF1Jacobi->Bind();
 		//tfsbad what about dz?

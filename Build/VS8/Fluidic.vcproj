@@ -39,7 +39,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="C:\Program Files\NVIDIA Corporation\Cg\include"
+				AdditionalIncludeDirectories="$(CG_INC_PATH)"
 				PreprocessorDefinitions="WIN32;_DEBUG;_LIB"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -104,7 +104,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="C:\Program Files\NVIDIA Corporation\Cg\include"
+				AdditionalIncludeDirectories="$(CG_INC_PATH)"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB"
 				RuntimeLibrary="2"
 				DebugInformationFormat="0"
