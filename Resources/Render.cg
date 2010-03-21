@@ -44,6 +44,7 @@ float4 Render2D(uniform samplerRECT velocity,
 
 #ifdef RENDER_BOUNDARIES
 		result.rgb += b.rrr;
+		result.a += b.r;
 #endif
 
 #ifdef RENDER_LIC
