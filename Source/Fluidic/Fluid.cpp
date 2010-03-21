@@ -84,6 +84,9 @@ void Fluid::Init(const FluidOptions &options)
 
 	CheckFramebufferStatus();
 	ready = 1;
+
+	mTimeDelta = 0.f;
+	mLastSolveCount = 0;
 }
 
 void Fluid::DestroyBuffers()

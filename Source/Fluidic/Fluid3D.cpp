@@ -72,6 +72,8 @@ FluidOptions Fluid3D::DefaultOptions()
 	options.RenderResolution = Vector(400, 400);
 	options.Viscosity = ViscosityAir;
 	options.SolverOptions = RS_NICE | RS_DOUBLE_PRECISION;
+	options.DiffuseSteps = 10;
+	options.FixedTimeInterval = 0.02f;
 	return options;
 }
 void Fluid3D::InitTextures() {
@@ -334,34 +336,54 @@ void Fluid3D::Update(float time)
 	//UpdateArbitraryBoundaryStep();
 	UpdateOffsetStep();	
 
-	//only process if time is positive, or there will be no change
-	if (time > 0) 
+	mLastSolveCount = 0;
+	if (mOptions.FixedTimeInterval == 0)
 	{
-		PerturbDensityStep(time);
-		BoundaryVelocityStep();
-		if (mOptions.GetOption(RS_VORTICITY_CONFINEMENT)) VorticityConfinementStep(time);
-		if (mOptions.GetOption(RS_ADVECT_VELOCITY)) AdvectVelocityStep(time);
-		
-		if (mOptions.GetOption(RS_ZCULL)) 
+		if (time > 0) 
 		{
-			glEnable(GL_DEPTH_TEST);
-			ZCullStep(false);
+			UpdateStep(time);
+			mLastSolveCount++;
 		}
-		if (mOptions.GetOption(RS_DIFFUSE_VELOCITY)) DiffuseVelocityStep(time);
-
-		UpdatePressureStep(time);
-		if (mOptions.GetOption(RS_ZCULL)) glDisable(GL_DEPTH_TEST);
-		BoundaryPressureStep();
-		SubtractPressureGradientStep(time);
-
-		Poll(time);
-
-		if (mOptions.GetOption(RS_ADVECT_DATA)) AdvectDataStep(time);
-		if (mOptions.GetOption(RS_DIFFUSE_DATA)) DiffuseDataStep(time);
+	}
+	else
+	{
+		mTimeDelta += time;
+		while (mTimeDelta > mOptions.FixedTimeInterval)
+		{
+			UpdateStep(mOptions.FixedTimeInterval);
+			mTimeDelta -= mOptions.FixedTimeInterval;
+			mLastSolveCount++;
+		}
 	}
 
 	PrePostUpdate(false);
 	CheckGLError("After Update");
+}
+
+void Fluid3D::UpdateStep(float time)
+{
+	//glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, mRenderbufferId);
+	PerturbDensityStep(time);
+	BoundaryVelocityStep();
+	if (mOptions.GetOption(RS_VORTICITY_CONFINEMENT)) VorticityConfinementStep(time);
+	if (mOptions.GetOption(RS_ADVECT_VELOCITY)) AdvectVelocityStep(time);
+	
+	if (mOptions.GetOption(RS_ZCULL)) 
+	{
+		glEnable(GL_DEPTH_TEST);
+		ZCullStep(false);
+	}
+	if (mOptions.GetOption(RS_DIFFUSE_VELOCITY)) DiffuseVelocityStep(time);
+
+	UpdatePressureStep(time);
+	if (mOptions.GetOption(RS_ZCULL)) glDisable(GL_DEPTH_TEST);
+	BoundaryPressureStep();
+	SubtractPressureGradientStep(time);
+
+	Poll(time);
+
+	if (mOptions.GetOption(RS_ADVECT_DATA)) AdvectDataStep(time);
+	if (mOptions.GetOption(RS_DIFFUSE_DATA)) DiffuseDataStep(time);
 }
 
 void Fluid3D::Render()
@@ -615,7 +637,7 @@ void Fluid3D::DiffuseDataStep(float time)
 	mF4Jacobi->SetParam("alpha", alpha);
 	mF4Jacobi->SetParam("beta", beta);
 
-	for (int i=0;i<10;i++)
+	for (int i=0;i<mOptions.DiffuseSteps;i++)
 	{
 		mF4Jacobi->SetParamTex("x", mTextures[data]);
 		mF4Jacobi->SetParamTex("b", mTextures[data]);
@@ -638,7 +660,7 @@ void Fluid3D::DiffuseVelocityStep(float time)
 	mF4Jacobi->SetParam("alpha", alpha);
 	mF4Jacobi->SetParam("beta", beta);
 
-	for (int i=0; i<10; i++)
+	for (int i=0; i<mOptions.DiffuseSteps; i++)
 	{
 		mF4Jacobi->SetParamTex("x", mTextures[velocity]);
 		mF4Jacobi->SetParamTex("b", mTextures[velocity]);
@@ -663,7 +685,7 @@ void Fluid3D::UpdatePressureStep(float time)
 	DoCalculationSolver1D(divField);
 
 	// Find pressure using jacobi iterations
-	for (int i=0;i<10;i++)
+	for (int i=0;i<mOptions.DiffuseSteps;i++)
 	{
 		mF1Jacobi->Bind();
 		//tfsbad what about dz?

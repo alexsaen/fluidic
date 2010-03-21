@@ -76,13 +76,15 @@ namespace Fluidic
 		 */
 		bool GetOption(SolverOptionsFlags option);
 
+		float FixedTimeInterval;
+		int DiffuseSteps;
+
 		// Note: The following cannot be relied on outside of the Fluid class
 		Vector RenderDelta;
 		Vector SolverDelta;
 		Vector RenderDeltaInv; //1/RenderDelta, for optimisation purposes
 		Vector SolverDeltaInv; //1/SolverDelta, for optimisation purposes
 		Vector SolverToRenderScale; //2 means solver res is double render res, for example
-
 	};
 
 	inline bool FluidOptions::GetOption(SolverOptionsFlags option) 

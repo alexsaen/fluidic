@@ -93,6 +93,7 @@ namespace TestFluidic
 		void DrawFluidText();
 		void BuildFluidTextCallList();
 
+		int solveCount;
 		int startTime;
 		int previousTime;
 		int currFrame;

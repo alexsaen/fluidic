@@ -58,7 +58,6 @@ void TestScene2D::Interact()
 
 void TestScene2D::Update(float time)
 {
-
 	float xPos = options.Size.x * (float)mouseState.x / options.RenderResolution.x;
 	float yPos = options.Size.y * (1 - (float)mouseState.y/options.RenderResolution.y);
 	Vector position(xPos, yPos);

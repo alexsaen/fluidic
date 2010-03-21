@@ -176,18 +176,21 @@ void TestScene::Tick()
 	float dt = 0.001f * elapsedTime;
 	currFrame++;
 
-	if (currFrame > 0 && currFrame % 100 == 0) 
+	float timeSinceStart = currTime - startTime;
+	if (timeSinceStart > 1000)
 	{
-		float fps = 1000.f*currFrame / (currTime - startTime);
+		float fps = 1000.f*currFrame / timeSinceStart;
 		char title[256];
-		sprintf_s(title, 256, "Test Fluid Solver %3.1f FPS (%.4fs)", fps, dt);  
+		sprintf_s(title, 256, "Test Fluid Solver %3.1f FPS @%dsteps", fps, solveCount);  
 		glutSetWindowTitle(title);
 		startTime = glutGet(GLUT_ELAPSED_TIME);
 		currFrame = 0;
+		solveCount = 0;
 	}
 
 	Interact();
 	Update(dt);
+	solveCount += fluid->GetSolveCount();
 	Display();
 }
 
@@ -296,9 +299,8 @@ void TestScene::HandleKeyboardSpecial(int key)
 void TestScene::InitFluid() 
 {
 	fluid->Init(options);
-	
-	startTime = glutGet(GLUT_ELAPSED_TIME);
-	currFrame = 0;
+	previousTime = startTime = glutGet(GLUT_ELAPSED_TIME);
+	currFrame = solveCount = 0;
 }
 
 void TestScene::Resize(int w, int h)

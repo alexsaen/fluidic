@@ -75,6 +75,8 @@ namespace Fluidic
 
 		void Poll(float time);
 
+		void UpdateStep(float time);
+
 		void ZCullStep(bool clearFirst);
 
 		void AdvectDataStep(float time);

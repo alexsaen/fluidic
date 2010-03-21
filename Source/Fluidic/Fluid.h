@@ -135,6 +135,8 @@ namespace Fluidic
 
 		void SetBoundaryTexture(GLuint textureId);
 
+		int GetSolveCount() { return mLastSolveCount; }
+
 	protected:
 		static const int SolverCallListOffset = 0;
 		static const int RenderDataCallListOffset = 1;
@@ -149,6 +151,8 @@ namespace Fluidic
 		void DrawSolverQuad(const Vector &textureSize, const Vector &quadSize, float z);
 		
 		void SetupTexture(GLuint texId, GLuint internalFormat, Vector resolution, int components, char *initialData);
+
+		virtual void UpdateStep(float time) {time=time;/*shush compiler noship*/ }
 
 		void SetOutputTexture(const int textureIndex);
 		void DoCalculationSolver(int &textureIndex);
@@ -239,5 +243,9 @@ namespace Fluidic
 
 		// Data (aka Ink/density) Textures
 		int data;
+
+		// Timing
+		float mTimeDelta;
+		int mLastSolveCount;
 	};
 }
