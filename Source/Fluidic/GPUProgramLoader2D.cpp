@@ -150,10 +150,22 @@ GPUProgram *GPUProgramLoader2D::ZCull()
 	return program;
 }
 
-GPUProgram *GPUProgramLoader2D::Render() 
+GPUProgram *GPUProgramLoader2D::Render(const FluidOptions &options) 
 {
+
 	GPUProgram *program = new GPUProgram();
-	program->SetProgram(mCgContext, GetPathTo("Render"), mCgFragmentProfile, "Render2D");
+	if (options.RenderOptions == RR_NONE) {
+		program->SetProgram(mCgContext, GetPathTo("Render"), mCgFragmentProfile, "Render2D");
+	}
+	else
+	{
+		list<const char*> defines;
+		if (options.GetRenderOption(RR_INK)) defines.push_back("-DRENDER_INK");
+		if (options.GetRenderOption(RR_BOUNDARIES)) defines.push_back("-DRENDER_BOUNDARIES");
+		if (options.GetRenderOption(RR_FLOW)) defines.push_back( "-DRENDER_LIC");
+		if (options.GetRenderOption(RR_NULLCLINES)) defines.push_back("-DRENDER_NULLCLINES");
+		program->SetProgram(mCgContext, GetPathTo("Render"), mCgFragmentProfile, "Render2D", defines);
+	}
 	program->AddParam("data");
 	program->AddParam("velocity");
 	program->AddParam("pressure");

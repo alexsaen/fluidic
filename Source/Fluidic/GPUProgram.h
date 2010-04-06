@@ -28,6 +28,7 @@ THE SOFTWARE.
 
 #include <string>
 #include <map>
+#include <list>
 
 namespace Fluidic
 {
@@ -40,6 +41,17 @@ namespace Fluidic
 	public:
 		GPUProgram();
 		~GPUProgram();
+
+		/**
+		 * Loads the given program from a file into the context.
+		 *
+		 * @param context context to load the program into
+		 * @param filename the filename to load
+		 * @param profile the cg profile to use
+		 * @param programName the name of the program
+		 * @param defined preprocessor defines to compile with
+		 */
+		void SetProgram(CGcontext context, const char *filename, CGprofile profile, char *programName, std::list<const char*> &defines);
 
 		/**
 		 * Loads the given program from a file into the context.

@@ -50,6 +50,10 @@ Fluid(cgHomeDir)
 
 Fluid2D::~Fluid2D(void)
 {
+	DeletePrograms();
+}
+void Fluid2D::DeletePrograms(void)
+{
 	delete mAdvect;
 	delete mVorticity;
 	delete mInject;
@@ -72,6 +76,7 @@ FluidOptions Fluid2D::DefaultOptions()
 	options.RenderResolution = Vector(400, 400);
 	options.Viscosity = ViscosityAir;
 	options.SolverOptions = RS_NICE | RS_DOUBLE_PRECISION;
+	options.RenderOptions = RR_INK | RR_BOUNDARIES;
 	options.DiffuseSteps = 30;
 	options.FixedTimeInterval = 0.005f;
 	return options;
@@ -196,7 +201,7 @@ void Fluid2D::InitPrograms(const std::string &cgHomeDir)
 	mDivField = loader.DivField();
 	mSubtractPressureGradient = loader.SubtractPressureGradient();
 	mZCull = loader.ZCull();
-	mRender = loader.Render();
+	mRender = loader.Render(mOptions);
 }
 
 /** Render and Updates */
@@ -231,7 +236,7 @@ void Fluid2D::Update(float time)
 	else
 	{
 		mTimeDelta += time;
-		while (mTimeDelta > mOptions.FixedTimeInterval)
+		while (mTimeDelta > mOptions.FixedTimeInterval && mLastSolveCount < 10)
 		{
 			UpdateStep(mOptions.FixedTimeInterval);
 			mTimeDelta -= mOptions.FixedTimeInterval;

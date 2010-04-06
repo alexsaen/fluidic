@@ -240,6 +240,30 @@ void TestScene::HandleKeyboard(unsigned char key, bool down)
 			fluid->InjectCheckeredData();
 			break;
 
+		case 'i': // Ink on / off
+			options.RenderOptions ^= Fluidic::RR_INK;
+			fluid->Init(options, true);
+			fluid->SetColorDensities(1, 0, -1);
+			break;
+
+		case 'b': // Boundary on / off
+			options.RenderOptions ^= Fluidic::RR_BOUNDARIES;
+			fluid->Init(options, true);
+			fluid->SetColorDensities(1, 0, -1);
+			break;
+
+		case 'f': // Flow on / off
+			options.RenderOptions ^= Fluidic::RR_FLOW;
+			fluid->Init(options, true);
+			fluid->SetColorDensities(1, 0, -1);
+			break;
+
+		case 'n': // Nullclines on / off
+			options.RenderOptions ^= Fluidic::RR_NULLCLINES;
+			fluid->Init(options, true);
+			fluid->SetColorDensities(1, 0, -1);
+			break;
+
 		case 'q': //quit
 			exit(0);
 			break;

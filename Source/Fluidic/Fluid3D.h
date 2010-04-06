@@ -72,6 +72,7 @@ namespace Fluidic
 		void SetGlobalProgramParams();
 		void InitTextures();
 		void InitBuffers();
+		void DeletePrograms();
 
 		void Poll(float time);
 

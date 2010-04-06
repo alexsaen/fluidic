@@ -1,10 +1,5 @@
 #include "Utils.cg"
 
-#define RENDER_INK 1
-#define RENDER_BOUNDARIES 1
-//#define RENDER_LIC 1
-//#define RENDER_NULLCLINES 1
-
 /**
  * Renders the fluid. By default, only data is used. This method can be changed
  * internally to show LIC and nullclines, in which case velocity is used too.
@@ -44,7 +39,7 @@ float4 Render2D(uniform samplerRECT velocity,
 
 #ifdef RENDER_BOUNDARIES
 		result.rgb += b.rrr;
-		result.a += b.r;
+		result.a += clamp(100*b.r, 0, 1);
 #endif
 
 #ifdef RENDER_LIC
@@ -61,8 +56,7 @@ float4 Render2D(uniform samplerRECT velocity,
 
 	if (b.x == 1) curr = 1;
 	result *= 0.5;
-	result += curr*0.5;
-	result.a = 1;
+	result += curr*0.5 * length(v)*2;
 #endif
 	
 #ifdef RENDER_NULLCLINES
@@ -79,7 +73,6 @@ float4 Render2D(uniform samplerRECT velocity,
 		if (abs(topY) > abs(v.y) && abs(bottomY) > abs(v.y)) {
 			result.g = 1;
 		}
-	}
 #endif
 
 	return result;

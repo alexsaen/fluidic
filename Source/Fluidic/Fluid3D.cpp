@@ -50,6 +50,10 @@ Fluid(cgHomeDir), mSlabs(0,0)
 
 Fluid3D::~Fluid3D(void)
 {
+	DeletePrograms();
+}
+void Fluid3D::DeletePrograms(void)
+{
 	delete mAdvect;
 	delete mVorticity;
 	delete mInject;
@@ -348,7 +352,7 @@ void Fluid3D::Update(float time)
 	else
 	{
 		mTimeDelta += time;
-		while (mTimeDelta > mOptions.FixedTimeInterval)
+		while (mTimeDelta > mOptions.FixedTimeInterval && mLastSolveCount < 10)
 		{
 			UpdateStep(mOptions.FixedTimeInterval);
 			mTimeDelta -= mOptions.FixedTimeInterval;

@@ -55,7 +55,7 @@ namespace Fluidic
 		/**
 		 * \brief Sets up the fluid with the given options. Can be called at any time. Will reset the fluid
 		 */
-		void Init(const FluidOptions &options);
+		void Init(const FluidOptions &options, bool reloadPrograms=false);
 
 		/// Returns the size of the fluid
 		Vector GetSize();
@@ -147,6 +147,7 @@ namespace Fluidic
 		virtual void InitPrograms(const std::string &cgHomeDir) = 0;
 		virtual void InitTextures() = 0;
 		virtual void InitBuffers() = 0;
+		virtual void DeletePrograms() = 0;
 		void DestroyBuffers();
 		void DrawSolverQuad(const Vector &textureSize, const Vector &quadSize, float z);
 		

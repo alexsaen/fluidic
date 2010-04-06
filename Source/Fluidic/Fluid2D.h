@@ -50,6 +50,7 @@ namespace Fluidic
 		void InitPrograms(const std::string &cgHomeDir);
 		void InitTextures();
 		void InitBuffers();
+		void DeletePrograms();
 
 		void Poll(float time);
 

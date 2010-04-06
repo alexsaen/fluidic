@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #pragma once
 
+#include "FluidOptions.h"
 #include "GPUProgram.h"
 #include <string>
 
@@ -47,7 +48,7 @@ namespace Fluidic
 		GPUProgram *DivField();
 		GPUProgram *SubtractPressureGradient();
 		GPUProgram *ZCull();
-		GPUProgram *Render();
+		GPUProgram *Render(const FluidOptions &options);
 
 	protected:
 		const char *GetPathTo(char *program);

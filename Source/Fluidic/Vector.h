@@ -23,6 +23,7 @@ THE SOFTWARE.
 #pragma once
 
 #include "Math.h"
+#include <iostream>
 
 namespace Fluidic
 {	

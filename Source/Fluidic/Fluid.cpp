@@ -57,7 +57,7 @@ Fluid::~Fluid(void)
 }
 
 /** Initialization Stuff */
-void Fluid::Init(const FluidOptions &options)
+void Fluid::Init(const FluidOptions &options, bool reloadPrograms)
 {
 	mOptions = options;
 
@@ -68,7 +68,9 @@ void Fluid::Init(const FluidOptions &options)
 	mOptions.SolverDeltaInv = mOptions.SolverResolution / mOptions.Size;
 	mOptions.SolverToRenderScale = mOptions.SolverResolution / mOptions.RenderResolution;
 
-	if (!ready) InitPrograms(mCgHomeDir);
+	if (reloadPrograms && ready) DeletePrograms();
+	if (reloadPrograms || !ready) InitPrograms(mCgHomeDir);
+	
 	CheckGLError("");
 
 	ready = 0;
@@ -198,8 +200,6 @@ void Fluid::SetBoundaryTextureStep()
 	glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB,  0, 0 );
 	cgGLEnableProfile(mCgFragmentProfile);
 	glDisable(GL_TEXTURE_RECTANGLE_ARB);
-	DEBUGTEX(boundaries);
-	
 }
 
 /** Helpers */

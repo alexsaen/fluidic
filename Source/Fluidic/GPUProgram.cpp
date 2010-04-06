@@ -35,6 +35,34 @@ GPUProgram::~GPUProgram(void)
 	cgDestroyProgram(mProgram);
 }
 
+void GPUProgram::SetProgram(CGcontext context, const char *filename, CGprofile profile, char *programName, list<const char*> &defines) 
+{
+	int count = (int)defines.size();
+	const char **args = new const char*[count+1];
+	int i=0;
+	for (list<const char*>::iterator it=defines.begin(); it != defines.end(); ++it)
+	{
+		args[i] = *it;
+		i++;
+	}
+	args[count] = 0;
+
+	mProgram = cgCreateProgramFromFile(
+		context,
+		CG_SOURCE,
+		filename,
+		profile,
+		programName,
+		args );
+
+	CGerror error = cgGetError();
+	const char *a = cgGetErrorString(error);
+	const char *b = cgGetLastListing(context);
+
+	if (mProgram == 0) throw "Could not load program";
+	cgGLLoadProgram(mProgram);
+}
+
 void GPUProgram::SetProgram(CGcontext context, const char *filename, CGprofile profile, char *programName) 
 {
 	mProgram = cgCreateProgramFromFile(

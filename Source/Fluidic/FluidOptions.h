@@ -43,6 +43,16 @@ namespace Fluidic
 		RS_UGLY = RS_ADVECT_VELOCITY | RS_ADVECT_DATA | RS_ZCULL,
 	};
 
+	enum RenderOptionsFlags {
+		RR_NONE = 0,
+		RR_INK = 1,
+		RR_BOUNDARIES = 2,
+		RR_FLOW = 4,
+		RR_NULLCLINES = 8,
+
+		RR_ALL = ~0
+	};
+
 	const float ViscosityAir = 0.0000178f;
 	const float ViscosityWater = 0.0009f;
 	const float ViscosityOliveOil = 0.081f;
@@ -68,13 +78,24 @@ namespace Fluidic
 		/// The steps to use in solving the fluid (uses SolverOptionsFlags)
 		int SolverOptions;
 
+		/// The steps to use in rendering the fluid (uses RenderOptionsFlags)
+		int RenderOptions;
+
 		/**
 		 * Returns true if the given option is set
 		 *
 		 * @param option the solver option to check
 		 * @return true if option is set
 		 */
-		bool GetOption(SolverOptionsFlags option);
+		bool GetOption(SolverOptionsFlags option) const;
+
+		/**
+		 * Returns true if the given render option is set
+		 *
+		 * @param option the render option to check
+		 * @return true if option is set
+		 */
+		bool GetRenderOption(RenderOptionsFlags option) const;
 
 		float FixedTimeInterval;
 		int DiffuseSteps;
@@ -87,9 +108,14 @@ namespace Fluidic
 		Vector SolverToRenderScale; //2 means solver res is double render res, for example
 	};
 
-	inline bool FluidOptions::GetOption(SolverOptionsFlags option) 
+	inline bool FluidOptions::GetOption(SolverOptionsFlags option) const
 	{ 
 		return ((SolverOptions & option) == option); 
+	}
+
+	inline bool FluidOptions::GetRenderOption(RenderOptionsFlags option) const
+	{ 
+		return ((RenderOptions & option) == option); 
 	}
 
 }
